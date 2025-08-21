@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis IA</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Meus Chats</h2>
+                <button class="new-chat-button" id="new-chat-btn">
+                    <i class="ph ph-plus"></i> Novo Chat
+                </button>
+            </div>
+
+            <ul class="chat-history" id="chat-history">
+            </ul>
+
+            <!-- O LUGAR CORRETO PARA O BOTÃO DE SAIR É AQUI DENTRO -->
+            <div class="sidebar-footer">
+                <div class="theme-switcher">
+                    <i class="ph ph-sun"></i>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <i class="ph ph-moon"></i>
+                </div>
+
+                <div class="tts-control">
+                    <i class="ph ph-speaker-high"></i>
+                    <label class="switch">
+                        <input type="checkbox" id="tts-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- BOTÃO DE SAIR ADICIONADO AQUI -->
+                <button class="icon-button" id="logout-btn" title="Sair">
+                    <i class="ph ph-sign-out"></i>
+                </button>
+            </div>
+        </aside>
+
+        <main class="chat-container">
+            <div class="chat-header">
+                <button class="icon-button" id="sidebar-toggle-open">
+                    <i class="ph ph-list"></i>
+                </button>
+                <h1 id="chat-title">Jarvis IA</h1>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+            </div>
+            <form class="chat-input-form" id="chat-form">
+                <input type="text" id="message-input" placeholder="Converse com Jarvis..." autocomplete="off" required>
+                <button type="submit" class="icon-button">
+                    <i class="ph ph-paper-plane-right"></i>
+                </button>
+            </form>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - JARVIS IA</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: rgba(255, 255, 255, 0.08);
+      --text: #e9eaf5;
+      --muted: #a8b3d0;
+      --primary: #6c8aff;
+      --shadow: 0 10px 25px rgba(0, 0, 0, .25);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
+      color: var(--text);
+      background: radial-gradient(circle at 20% -10%, rgba(108, 138, 255, .25), transparent 40%),
+        radial-gradient(circle at 100% 0%, rgba(0, 0, 0, .15), transparent 40%),
+        linear-gradient(135deg, #0b1020 0%, #0d1a2b 60%, #10172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: saturate(180%) blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: var(--shadow);
+    }
+    h1 { margin: 0 0 6px; font-size: 1.75rem; font-weight: 600; text-align: center;}
+    p.subtitle { color: var(--muted); margin: 0 0 20px; font-size: 0.95rem; text-align: center;}
+    .form { display: flex; flex-direction: column; gap: 14px; }
+    .label { font-size: 0.85rem; color: #e6eaff; margin-bottom: 6px; }
+    .input {
+      width: 100%; padding: 14px; border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff; outline: none;
+    }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 138, 255, 0.25); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .checkbox { display: flex; align-items: center; gap: 8px; }
+    button.primary {
+      width: 100%; padding: 14px; border-radius: 10px; border: 0;
+      background: linear-gradient(135deg, #5e7aff 0%, #3d5afc 100%);
+      color: white; font-weight: 600; cursor: pointer;
+    }
+    button.primary:disabled { opacity: .6; cursor: not-allowed; }
+    .divider { height: 1px; background: rgba(255, 255, 255, .15); margin: 14px 0; border: 0; }
+    .help { margin-top: 6px; font-size: .85rem; color: var(--muted); }
+    .icon { width: 18px; height: 18px; vertical-align: middle; }
+  </style>
+</head>
+
+<body>
+  <main class="card" id="login-view" aria-label="Área de login">
+    <h1>JARVIS IA LIGHT</h1>
+    <p class="subtitle">Acesse sua conta de forma simples e segura</p>
+
+    <form id="loginForm" class="form" novalidate>
+      <div>
+        <label class="label" for="email">E-mail</label>
+        <input id="email" name="email" type="email" class="input" placeholder="exemplo@domínio.com"
+          autocomplete="username" required>
+      </div>
+
+      <div>
+        <label class="label" for="password">Senha</label>
+        <div style="position: relative;">
+          <input id="password" name="password" type="password" class="input" placeholder="Sua senha"
+            autocomplete="current-password" required>
+          <button type="button" id="togglePassword" aria-label="Mostrar/Ocultar senha"
+            style="position:absolute; right:8px; top:50%; transform: translateY(-50%); background:transparent; border:0; color:#fff; cursor:pointer;">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="checkbox" title="Lembrar minha sessão" style="cursor: pointer;">
+          <input id="remember" type="checkbox" style="width:18px; height:18px; accent-color: #6c8aff;">
+          <span>Lembrar de mim</span>
+        </label>
+        </div>
+
+      <hr class="divider" aria-hidden="true" />
+
+      <button class="primary" type="submit" id="loginBtn" disabled>Entrar</button>
+    </form>
+
+    <p class="help" id="login-status" aria-live="polite" style="height: 1.2em; text-align: center;"></p>
+  </main>
+
+  <script>
+    (function () {
+      const loginForm = document.getElementById('loginForm');
+      const email = document.getElementById('email');
+      const password = document.getElementById('password');
+      const loginBtn = document.getElementById('loginBtn');
+      const loginStatus = document.getElementById('login-status');
+      const togglePassword = document.getElementById('togglePassword');
+      const remember = document.getElementById('remember');
+
+      // Restaura email se salvo
+      if (localStorage.getItem('rememberedEmail')) {
+        email.value = localStorage.getItem('rememberedEmail');
+        remember.checked = true;
+        validateLogin();
+      }
+
+      function validateLogin() {
+        const ok = email.value.trim() !== '' && password.value.trim() !== '';
+        loginBtn.disabled = !ok;
+        return ok;
+      }
+
+      email.addEventListener('input', validateLogin);
+      password.addEventListener('input', validateLogin);
+
+      loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!validateLogin()) return;
+
+        loginStatus.textContent = 'Autenticando...';
+        const em = email.value.trim();
+        const pw = password.value.trim();
+
+        // ATENÇÃO: Verifique se a porta (8000) está correta para o seu backend FastAPI
+        fetch('http://127.0.0.1:8000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: em, password: pw })
+        })
+          .then(response => {
+            if (!response.ok) {
+              return response.json().then(err => { throw new Error(err.detail || 'E-mail ou senha inválidos.') });
+            }
+            return response.json();
+          })
+          .then(data => {
+            loginStatus.textContent = 'Login bem-sucedido. Redirecionando...';
+            localStorage.setItem('jwtToken', data.accessToken);
+
+            if (remember.checked) {
+              localStorage.setItem('rememberedEmail', em);
+            } else {
+              localStorage.removeItem('rememberedEmail');
+            }
+
+            // ATENÇÃO: Verifique se o nome do seu arquivo principal é 'index.html'
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 800);
+          })
+          .catch(error => {
+            loginStatus.textContent = error.message;
+          });
+      });
+
+      togglePassword.addEventListener('click', function () {
+        const type = password.type === 'password' ? 'text' : 'password';
+        password.type = type;
+      });
+    })();
+  </script>
+</body>
+</html>

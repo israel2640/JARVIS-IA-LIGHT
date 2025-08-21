@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Administração</title>
+    <style>
+        /* Adicione este estilo ao seu CSS existente no admin.html */
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Estilos gerais */
+        body { font-family: sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        
+        /* Estilos do formulário */
+        .form { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
+        .form input[type="text"], .form input[type="email"], .form input[type="password"], .form input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .form-row { display: flex; align-items: center; gap: 20px; }
+        .form-row label { display: flex; align-items: center; gap: 5px; }
+        .form button { padding: 12px; border: none; border-radius: 5px; background-color: #28a745; color: white; cursor: pointer; font-size: 16px; }
+        .form button:hover { background-color: #218838; }
+        #form-status { text-align: center; min-height: 20px; font-weight: bold; }
+        hr { border: 0; height: 1px; background: #ddd; margin: 30px 0; }
+        
+        /* Estilos dos botões de ação na tabela */
+        .action-btn { padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white; margin-right: 5px; }
+        .edit-btn { background-color: #007bff; }
+        .delete-btn { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerenciamento de Usuários</h1>
+        <a href="index.html" class="back-link">⬅️ Voltar para o Chat</a>
+        <h2>Adicionar Novo Usuário</h2>
+        <form id="createUserForm" class="form" autocomplete="off">
+            <input type="text" id="newName" placeholder="Nome Completo" required>
+            <input type="email" id="newEmail" placeholder="E-mail do Usuário" required>
+            <input type="password" id="newPassword" placeholder="Senha Provisória" required>
+            
+            <div class="form-row">
+                <div>
+                    <label for="diasDuracao">Duração (dias):</label>
+                    <input type="number" id="diasDuracao" value="30" min="1">
+                </div>
+                <label>
+                    <input type="checkbox" id="acessoVitalicio" style="width: auto;">
+                    Acesso Vitalício
+                </label>
+            </div>
+
+            <button type="submit">Criar Usuário</button>
+        </form>
+        <p id="form-status"></p>
+        
+        <hr>
+
+        <h2>Usuários Atuais</h2>
+        <table id="users-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Expira em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('jwtToken');
+        const tableBody = document.querySelector('#users-table tbody');
+        const createUserForm = document.getElementById('createUserForm');
+        const formStatus = document.getElementById('form-status');
+        const diasDuracaoInput = document.getElementById('diasDuracao');
+        const acessoVitalicioCheckbox = document.getElementById('acessoVitalicio');
+
+        // Função para buscar e renderizar a lista de usuários
+        const fetchAndRenderUsers = async () => {
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.status === 403) {
+                    document.body.innerHTML = '<h1>Acesso Negado</h1><p>Você não tem permissão para ver esta página.</p>';
+                    return;
+                }
+                if (!response.ok) throw new Error('Falha ao carregar os dados dos usuários.');
+                const users = await response.json();
+                tableBody.innerHTML = ''; 
+
+                users.forEach(user => {
+                    const expirationDateStr = user.data_expiracao || user.expiracao;
+                    const formattedDate = expirationDateStr 
+                        ? (new Date(expirationDateStr).getFullYear() > 9000 ? 'Vitalício' : new Date(expirationDateStr).toLocaleDateString('pt-BR', { timeZone: 'UTC' }))
+                        : 'Vitalício';
+                    const row = `
+                        <tr data-user-email="${user.email}">
+                            <td>${user.nome || user.name}</td>
+                            <td>${user.email}</td>
+                            <td>${formattedDate}</td>
+                            <td>
+                                <button class="action-btn edit-btn">Editar</button>
+                                <button class="action-btn delete-btn">Excluir</button>
+                            </td>
+                        </tr>`;
+                    tableBody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Erro ao buscar usuários:', error);
+                tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">${error.message}</td></tr>`;
+            }
+        };
+
+        // Lógica para o formulário de criação
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newName').value;
+            const email = document.getElementById('newEmail').value;
+            const password = document.getElementById('newPassword').value;
+            
+            const payload = {
+                name, email, password,
+                dias_duracao: parseInt(diasDuracaoInput.value, 10),
+                acesso_vitalicio: acessoVitalicioCheckbox.checked
+            };
+
+            formStatus.textContent = 'Criando usuário...';
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Falha ao criar usuário.');
+                formStatus.textContent = result.message;
+                createUserForm.reset();
+                fetchAndRenderUsers();
+            } catch (error) {
+                formStatus.textContent = `Erro: ${error.message}`;
+            }
+        });
+
+        // Lógica para os botões de ação na tabela
+        tableBody.addEventListener('click', async (e) => {
+            const target = e.target;
+            const userRow = target.closest('tr');
+            if (!userRow) return;
+            const userEmail = userRow.dataset.userEmail;
+
+            if (target.classList.contains('edit-btn')) {
+                const novaDataStr = prompt("Digite a nova data de expiração (AAAA-MM-DD):", new Date().toISOString().split('T')[0]);
+                if (novaDataStr) {
+                    try {
+                        const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${userEmail}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ data_expiracao: new Date(novaDataStr).toISOString() })
+                        });
+                        if (!response.ok) throw new Error('Falha ao atualizar.');
+                        alert('Usuário atualizado!');
+                        fetchAndRenderUsers();
+                    } catch (error) { alert(`Erro: ${error.message}`); }
+                }
+            }
+
+            if (target.classList.contains('delete-btn')) {
+                if (confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) {
+                    try {
+                        const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${userEmail}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (!response.ok) throw new Error('Falha ao excluir.');
+                        alert('Usuário excluído!');
+                        fetchAndRenderUsers();
+                    } catch (error) { alert(`Erro: ${error.message}`); }
+                }
+            }
+        });
+
+        // Lógica para desabilitar o campo de dias
+        acessoVitalicioCheckbox.addEventListener('change', function() {
+            diasDuracaoInput.disabled = this.checked;
+        });
+
+        // Roda a função inicial para listar os usuários
+        document.addEventListener('DOMContentLoaded', fetchAndRenderUsers);
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Ambientes Virtuais do Python
+# Ignora a pasta do ambiente virtual para não enviar bibliotecas
+venv/
+*.venv
+
+# Arquivo de chaves secretas e senhas
+# LINHA MAIS IMPORTANTE PARA A SEGURANÇA!
+.env
+
+# Arquivos de cache e compilados do Python
+__pycache__/
+*.pyc
+
+# Arquivos de log
+*.log
