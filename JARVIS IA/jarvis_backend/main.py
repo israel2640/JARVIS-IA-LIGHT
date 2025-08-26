@@ -221,20 +221,51 @@ async def delete_user(email: str, admin_user: dict = Depends(get_current_admin_u
 
 async def stream_chat_generator(message: str, history_json: str):
     """
-    Função geradora que detecta o idioma, envia como metadado,
-    e depois transmite a resposta da IA.
+    Função geradora que detecta a necessidade de busca na web,
+    executa a busca se necessário, e então transmite a resposta da IA.
     """
     try:
-        idioma_detectado = utils.detectar_idioma_com_ia(message)
-        yield f"event: metadata\ndata: {json.dumps({'lang': idioma_detectado})}\n\n"
+        # 1. Decide se precisa buscar na web
+        if core_logic.precisa_buscar_na_web(message):
+            print(f"Buscando na web para: '{message}'")
+            contexto_da_web = core_logic.buscar_na_internet(message)
+            
+            # Monta o prompt do sistema para resumir os resultados da web
+            prompt_sistema = f"""
+            Você é Jarvis, um assistente de IA especialista em resumir notícias e informações da web.
 
-        history = json.loads(history_json)
-        mensagens_para_api = [{"role": "system", "content": "Você é Jarvis, um assistente prestativo."}]
-        mensagens_para_api.extend(history)
-        mensagens_para_api.append({"role": "user", "content": message})
+            INSTRUÇÕES CRÍTICAS PARA FORMATAÇÃO:
+            1. Responda com uma breve introdução (ex: "De acordo com as últimas informações...").
+            2. Liste os pontos principais em formato de tópicos (bullet points, usando '*').
+            3. Para cada tópico, escreva a manchete ou a informação principal.
+            4. Imediatamente após a informação, inclua o link da fonte que já está formatado nos resultados da pesquisa (o 🔗 [Acessar site](URL)). Não adicione a palavra "Fonte".
 
+            ---
+            RESULTADOS DA PESQUISA (Use para se basear):
+            {contexto_da_web}
+            ---
+            PERGUNTA DO USUÁRIO:
+            {message}
+            ---
+            """
+            # Para a busca na web, o histórico é menos relevante, então enviamos apenas o prompt do sistema e a pergunta
+            mensagens_para_api = [
+                {"role": "system", "content": prompt_sistema},
+                {"role": "user", "content": message}
+            ]
+
+        else:
+            # 2. Se não precisa buscar, segue o fluxo normal do chat
+            print(f"Não é necessário buscar na web para: '{message}'")
+            history = json.loads(history_json)
+            prompt_sistema = "Você é Jarvis, um assistente prestativo."
+            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
+            mensagens_para_api.extend(history)
+            mensagens_para_api.append({"role": "user", "content": message})
+
+        # 3. Envia para a OpenAI e transmite a resposta
         stream = openai_client.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-4o-mini",  # Você pode usar um modelo mais potente para resumos, se preferir
             messages=mensagens_para_api,
             stream=True,
         )
@@ -246,7 +277,8 @@ async def stream_chat_generator(message: str, history_json: str):
                 await asyncio.sleep(0.01)
 
     except Exception as e:
-        error_message = json.dumps({"error": f"Ocorreu um erro no servidor: {e}"})
+        print(f"Erro durante o streaming da resposta: {e}")
+        error_message = json.dumps({"error": "Ocorreu um erro no servidor."})
         yield f"data: {error_message}\n\n"
 
 

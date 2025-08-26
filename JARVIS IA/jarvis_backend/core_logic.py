@@ -127,3 +127,58 @@ def gerar_pagina_web_completa(descricao_usuario: str):
     except Exception as e:
         print(f"Erro ao gerar página web completa: {e}")
         return "Desculpe, ocorreu um erro ao tentar gerar o código. Por favor, tente novamente."
+    
+def precisa_buscar_na_web(pergunta: str):
+    """
+    Usa a IA para determinar se uma pergunta requer uma busca na web.
+    """
+    try:
+        prompt = f"""
+        Analise a seguinte pergunta de um usuário e determine se, para respondê-la bem, é necessário
+        acessar informações em tempo real da internet (notícias, eventos atuais, resultados esportivos, etc.).
+        Responda APENAS com 'SIM' ou 'NÃO'.
+
+        Pergunta: "{pergunta}"
+        """
+        response = openai_client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=3,
+            temperature=0
+        )
+        decisao = response.choices[0].message.content.strip().upper()
+        return "SIM" in decisao
+    except Exception as e:
+        print(f"Erro ao verificar necessidade de busca na web: {e}")
+        return False
+
+
+def buscar_na_internet(query: str):
+    """
+    Busca na internet usando a API da Serper e retorna um contexto formatado.
+    """
+    if not SERPER_API_KEY:
+        return "ERRO: A chave SERPER_API_KEY não está configurada."
+
+    url = "https://google.serper.dev/search"
+    payload = json.dumps({"q": query, "gl": "br", "hl": "pt-br"})
+    headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
+
+    try:
+        response = requests.post(url, headers=headers, data=payload)
+        response.raise_for_status()
+        results = response.json()
+
+        # Formata os resultados de forma clara para a IA
+        contexto_formatado = ""
+        if "organic" in results:
+            for item in results["organic"][:5]: # Pega os 5 primeiros resultados
+                titulo = item.get("title", "N/A")
+                link = item.get("link", "N/A")
+                snippet = item.get("snippet", "N/A")
+                contexto_formatado += f"- Título: {titulo}\n  Resumo: {snippet}\n  Fonte: 🔗 [Acessar site]({link})\n\n"
+        
+        return contexto_formatado if contexto_formatado else "Nenhum resultado relevante encontrado."
+    except Exception as e:
+        print(f"Erro na busca da Serper: {e}")
+        return f"Ocorreu um erro ao tentar buscar na web: {e}"
