@@ -265,7 +265,7 @@ async def stream_chat_generator(message: str, history_json: str):
 
         # 3. Envia para a OpenAI e transmite a resposta
         stream = openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # Você pode usar um modelo mais potente para resumos, se preferir
+            model="gpt-5-nano",  # Você pode usar um modelo mais potente para resumos, se preferir
             messages=mensagens_para_api,
             stream=True,
         )
