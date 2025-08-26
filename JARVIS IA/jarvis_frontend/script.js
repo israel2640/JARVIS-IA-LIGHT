@@ -190,9 +190,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // ==========================================================
-    // === EVENT LISTENERS E INICIALIZAÇÃO (VERSÃO CORRIGIDA)
-    // ==========================================================
 
     function addSidebarEventListeners() { 
         document.querySelectorAll(".chat-history-item").forEach((item) => { 
@@ -205,15 +202,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     newChatBtn.addEventListener("click", createNewChat);
 
-    // Lógica para ABRIR a sidebar (botão de menu no cabeçalho do chat)
-    sidebarToggleOpen.addEventListener("click", () => { 
-        sidebar.classList.remove("collapsed"); 
+    sidebarToggleOpen.addEventListener("click", (e) => { 
+        e.stopPropagation();
+        sidebar.classList.toggle("sidebar-visible"); 
     });
 
-    // Lógica para FECHAR a sidebar (clique na área do chat)
     document.querySelector('.chat-container').addEventListener('click', () => {
-        if (!sidebar.classList.contains('collapsed')) {
-            sidebar.classList.add('collapsed');
+        if (sidebar.classList.contains('sidebar-visible')) {
+            sidebar.classList.remove('sidebar-visible');
         }
     });
 
@@ -236,8 +232,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     
-        function render() { 
-            renderSidebar(); 
-            renderMessages(); 
-        }
-    });
+    function render() { 
+        renderSidebar(); 
+        renderMessages(); 
+    }
+
+    // A inicialização agora acontece após a verificação do token
+    loadState();
+    render();
+});

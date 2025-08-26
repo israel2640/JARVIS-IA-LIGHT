@@ -294,50 +294,33 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 
+/* ========================================================== */
+/* === [VERSÃO FINAL] Estilos para Responsividade === */
+/* ========================================================== */
+
 @media (max-width: 768px) {
-    /* Garante que a aplicação ocupe toda a altura da tela do celular */
-    .app-container {
-        display: block; /* Remove o flexbox para um layout mais simples */
-        position: relative; /* Define um contexto para o posicionamento da sidebar */
-        height: 100vh;
-    }
-    
-    /* 1. Esconde a barra lateral por padrão em telas pequenas */
     .sidebar {
-        /* Adiciona uma posição absoluta para que ela "flutue" sobre o conteúdo */
+        /* Posiciona a sidebar para flutuar sobre o conteúdo */
         position: absolute;
-        top: 0;
-        left: 0; /* Alinha à esquerda */
         z-index: 1000;
         height: 100%;
+        width: 260px; /* Garante uma largura fixa */
         
-        /* Começa escondida fora da tela */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-        
-        /* Adiciona uma sombra para dar profundidade quando aberta */
+        /* Começa escondida fora da tela à esquerda */
+        left: -260px; 
+        transition: left 0.3s ease-in-out; /* Anima a propriedade 'left' */
+
+        /* Adiciona uma sombra para dar profundidade */
         box-shadow: 4px 0px 15px rgba(0,0,0,0.2);
     }
 
-    /* 2. Mostra a sidebar quando a classe 'collapsed' é REMOVIDA */
-    /* ATENÇÃO: A lógica foi invertida para ser mais intuitiva. */
-    .sidebar:not(.collapsed) {
-        transform: translateX(0);
-    }
-    
-    /* 3. Faz o container do chat ocupar toda a largura da tela */
-    .chat-container {
-        width: 100%;
-        height: 100%;
-    }
-    
-    /* 4. Garante que o botão para abrir/fechar a sidebar funcione bem */
-    .chat-header #sidebar-toggle-open {
-        display: block;
+    /* Nova classe que o JavaScript vai adicionar para MOSTRAR a sidebar */
+    .sidebar-visible {
+        left: 0; /* Move a sidebar para dentro da tela */
     }
 
-    /* 5. Ajusta o tamanho máximo das bolhas de mensagem */
-    .message {
-        max-width: 90%;
+    .chat-container {
+        /* Garante que o chat sempre ocupe 100% da tela */
+        width: 100%;
     }
 }
