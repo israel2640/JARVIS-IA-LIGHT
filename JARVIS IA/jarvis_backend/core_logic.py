@@ -133,9 +133,10 @@ def precisa_buscar_na_web(pergunta: str):
     Usa a IA para determinar se uma pergunta requer uma busca na web.
     """
     try:
+        # Prompt aprimorado para ser mais direto e dar exemplos
         prompt = f"""
-        Analise a seguinte pergunta de um usuário e determine se, para respondê-la bem, é necessário
-        acessar informações em tempo real da internet (notícias, eventos atuais, resultados esportivos, etc.).
+        Analise a pergunta do usuário. A resposta exige conhecimento sobre eventos ou informações muito recentes (ocorridos hoje ou nos últimos dias)?
+        Perguntas sobre notícias, resultados esportivos, cotações de moedas, previsão do tempo ou eventos atuais exigem uma busca na web.
         Responda APENAS com 'SIM' ou 'NÃO'.
 
         Pergunta: "{pergunta}"
@@ -147,6 +148,7 @@ def precisa_buscar_na_web(pergunta: str):
             temperature=0
         )
         decisao = response.choices[0].message.content.strip().upper()
+        print(f"Decisão da IA para buscar na web: {decisao}") # Adicionado para debug
         return "SIM" in decisao
     except Exception as e:
         print(f"Erro ao verificar necessidade de busca na web: {e}")
