@@ -234,7 +234,7 @@ async def stream_chat_generator(message: str, history_json: str):
         mensagens_para_api.append({"role": "user", "content": message})
 
         stream = openai_client.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-4o-mini",
             messages=mensagens_para_api,
             stream=True,
         )
