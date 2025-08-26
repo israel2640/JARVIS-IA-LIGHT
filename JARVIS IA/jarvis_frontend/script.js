@@ -190,52 +190,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-
-    function addSidebarEventListeners() { 
-        document.querySelectorAll(".chat-history-item").forEach((item) => { 
-            const chatId = item.dataset.chatId; 
-            item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); 
-            item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); 
-            item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); 
-        }); 
-    }
-
+    function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }
     newChatBtn.addEventListener("click", createNewChat);
-
-    sidebarToggleOpen.addEventListener("click", (e) => { 
-        e.stopPropagation();
-        sidebar.classList.toggle("sidebar-visible"); 
-    });
-
-    document.querySelector('.chat-container').addEventListener('click', () => {
-        if (sidebar.classList.contains('sidebar-visible')) {
-            sidebar.classList.remove('sidebar-visible');
-        }
-    });
-
-    themeToggle.addEventListener("change", () => { 
-        document.body.classList.toggle("dark-theme"); 
-        localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); 
-    });
-
-    ttsToggle.addEventListener('change', () => { 
-        if (!ttsToggle.checked) { 
-            speechSynthesis.cancel(); 
-        } 
-    });
-
+    sidebarToggleOpen.addEventListener("click", () => { sidebar.classList.toggle("collapsed"); });
+    themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
+    ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
+    // --- [NOVO] LÓGICA DE LOGOUT ---
     logoutBtn.addEventListener('click', () => {
+        // Mostra uma confirmação para o usuário
         if (confirm("Tem certeza que deseja sair?")) {
+            // Limpa os dados da sessão do navegador
             localStorage.removeItem('jwtToken');
-            localStorage.removeItem('jarvisAppState');
+            localStorage.removeItem('jarvisAppState'); // Limpa o histórico de chats também
+
+            // Redireciona para a página de login
             window.location.href = 'login.html';
         }
     });
-    
-    function render() { 
-        renderSidebar(); 
-        renderMessages(); 
-    }
+    function render() { renderSidebar(); renderMessages(); }
 
     // A inicialização agora acontece após a verificação do token
     loadState();

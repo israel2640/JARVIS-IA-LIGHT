@@ -295,41 +295,34 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 @media (max-width: 768px) {
-    /* Esconde o overflow do body para evitar barras de rolagem duplas */
-    body {
-        overflow: hidden;
-    }
-
-    .app-container {
-        /* Garante que o container principal ocupe toda a tela */
-        width: 100%;
-        height: 100vh;
-    }
-
+    
+    /* 1. Esconde a barra lateral por padrão em telas pequenas */
     .sidebar {
-        /* Posiciona a sidebar para flutuar sobre o conteúdo */
+        /* Adiciona uma posição absoluta para que ela "flutue" sobre o conteúdo */
         position: absolute;
         z-index: 1000;
         height: 100%;
-        width: 260px; /* Garante uma largura fixa */
-        
-        /* Começa escondida fora da tela à esquerda */
-        left: -260px; 
-        transition: left 0.3s ease-in-out; /* Anima a propriedade 'left' */
-
-        /* Adiciona uma sombra para dar profundidade */
-        box-shadow: 4px 0px 15px rgba(0,0,0,0.2);
+        /* Começa escondida fora da tela */
+        margin-left: -260px;
     }
 
-    /* Nova classe que o JavaScript vai adicionar para MOSTRAR a sidebar */
-    .sidebar-visible {
-        left: 0; /* Move a sidebar para dentro da tela */
+    /* 2. Quando a sidebar não estiver colapsada, ela ocupa a tela */
+    .sidebar.collapsed {
+        margin-left: 0;
     }
-
+    
+    /* 3. Faz o container do chat ocupar toda a largura da tela */
     .chat-container {
-        /* Garante que o chat sempre ocupe 100% do espaço do container */
-        flex-grow: 1; 
         width: 100%;
-        /* Importante: O flexbox já está definido nas regras gerais, não precisa repetir aqui */
+    }
+    
+    /* 4. Garante que o botão para abrir/fechar a sidebar funcione bem */
+    .chat-header #sidebar-toggle-open {
+        display: block; /* Garante que o botão de abrir/fechar esteja sempre visível */
+    }
+
+    /* 5. Ajusta o tamanho máximo das bolhas de mensagem */
+    .message {
+        max-width: 90%;
     }
 }
