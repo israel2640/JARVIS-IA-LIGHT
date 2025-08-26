@@ -99,7 +99,7 @@ app = FastAPI(title="Jarvis IA Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://jarvis-ia-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -234,7 +234,7 @@ async def stream_chat_generator(message: str, history_json: str):
         mensagens_para_api.append({"role": "user", "content": message})
 
         stream = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-nano",
             messages=mensagens_para_api,
             stream=True,
         )
