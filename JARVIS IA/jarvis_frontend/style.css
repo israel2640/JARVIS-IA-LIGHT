@@ -326,3 +326,33 @@ input:checked + .slider:before { transform: translateX(20px); }
         max-width: 90%;
     }
 }
+
+@media (max-width: 768px) {
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;              /* ocupa a tela toda */
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;           /* mensagens rolam */
+        padding-bottom: 80px;       /* espaço pro input */
+    }
+
+    .chat-input-form {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        padding: 10px;
+        background: #fff;
+        border-top: 1px solid #ddd;
+        z-index: 999;
+    }
+
+    .chat-input-form input {
+        flex: 1;
+    }
+}
