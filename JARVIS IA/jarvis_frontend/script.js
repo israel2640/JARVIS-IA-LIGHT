@@ -16,9 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================================
     // === CONFIGURAÇÃO E ESTADO
     // ==========================================================
-    const streamApiUrl = "http://127.0.0.1:8000/chat/stream";
-    const titleApiUrl = "http://127.0.0.1:8000/chat/generate-title";
-    const codeGenApiUrl = "http://127.0.0.1:8000/code/generate-web-page";
+    const BACKEND_URL = "https://jarvis-ia-backend.onrender.com"; 
+
+    const streamApiUrl = `${BACKEND_URL}/chat/stream`;
+    const titleApiUrl = `${BACKEND_URL}/chat/generate-title`;
+    const codeGenApiUrl = `${BACKEND_URL}/code/generate-web-page`;
     let state = { chats: {}, currentChatId: null };
     
     // ==========================================================

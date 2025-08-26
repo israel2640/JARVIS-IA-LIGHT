@@ -97,7 +97,7 @@
                 return;
             }
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/admin/users', {
+                const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.status === 403) {
@@ -146,7 +146,7 @@
 
             formStatus.textContent = 'Criando usuário...';
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/admin/users', {
+                const response = await fetch(`${BACKEND_URL}/api/admin/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(payload)
@@ -172,7 +172,7 @@
                 const novaDataStr = prompt("Digite a nova data de expiração (AAAA-MM-DD):", new Date().toISOString().split('T')[0]);
                 if (novaDataStr) {
                     try {
-                        const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${userEmail}`, {
+                        const response = await fetch(`${BACKEND_URL}/api/admin/users/${userEmail}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                             body: JSON.stringify({ data_expiracao: new Date(novaDataStr).toISOString() })
@@ -187,7 +187,7 @@
             if (target.classList.contains('delete-btn')) {
                 if (confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) {
                     try {
-                        const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${userEmail}`, {
+                        const response = await fetch(`${BACKEND_URL}/api/admin/users/${userEmail}`, {
                             method: 'DELETE',
                             headers: { 'Authorization': `Bearer ${token}` }
                         });

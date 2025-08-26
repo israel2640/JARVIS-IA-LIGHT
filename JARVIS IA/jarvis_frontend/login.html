@@ -140,7 +140,7 @@
         const pw = password.value.trim();
 
         // ATENÇÃO: Verifique se a porta (8000) está correta para o seu backend FastAPI
-        fetch('http://127.0.0.1:8000/api/auth/login', {
+        fetch('https://jarvis-ia-backend.onrender.com/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: em, password: pw })
