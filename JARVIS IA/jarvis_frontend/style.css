@@ -292,3 +292,37 @@ input:checked + .slider:before { transform: translateX(20px); }
     padding: 1rem;
     border-top: 1px solid var(--border-color);
 }
+
+
+@media (max-width: 768px) {
+    
+    /* 1. Esconde a barra lateral por padrão em telas pequenas */
+    .sidebar {
+        /* Adiciona uma posição absoluta para que ela "flutue" sobre o conteúdo */
+        position: absolute;
+        z-index: 1000;
+        height: 100%;
+        /* Começa escondida fora da tela */
+        margin-left: -260px;
+    }
+
+    /* 2. Quando a sidebar não estiver colapsada, ela ocupa a tela */
+    .sidebar.collapsed {
+        margin-left: 0;
+    }
+    
+    /* 3. Faz o container do chat ocupar toda a largura da tela */
+    .chat-container {
+        width: 100%;
+    }
+    
+    /* 4. Garante que o botão para abrir/fechar a sidebar funcione bem */
+    .chat-header #sidebar-toggle-open {
+        display: block; /* Garante que o botão de abrir/fechar esteja sempre visível */
+    }
+
+    /* 5. Ajusta o tamanho máximo das bolhas de mensagem */
+    .message {
+        max-width: 90%;
+    }
+}
