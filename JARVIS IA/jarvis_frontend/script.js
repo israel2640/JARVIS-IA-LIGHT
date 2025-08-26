@@ -190,26 +190,54 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }
-    newChatBtn.addEventListener("click", createNewChat);
-    sidebarToggleOpen.addEventListener("click", () => { sidebar.classList.toggle("collapsed"); });
-    themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
-    ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
-    // --- [NOVO] LÓGICA DE LOGOUT ---
-    logoutBtn.addEventListener('click', () => {
-        // Mostra uma confirmação para o usuário
-        if (confirm("Tem certeza que deseja sair?")) {
-            // Limpa os dados da sessão do navegador
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('jarvisAppState'); // Limpa o histórico de chats também
+    // ==========================================================
+    // === EVENT LISTENERS E INICIALIZAÇÃO (VERSÃO CORRIGIDA)
+    // ==========================================================
 
-            // Redireciona para a página de login
+    function addSidebarEventListeners() { 
+        document.querySelectorAll(".chat-history-item").forEach((item) => { 
+            const chatId = item.dataset.chatId; 
+            item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); 
+            item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); 
+            item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); 
+        }); 
+    }
+
+    newChatBtn.addEventListener("click", createNewChat);
+
+    // Lógica para ABRIR a sidebar (botão de menu no cabeçalho do chat)
+    sidebarToggleOpen.addEventListener("click", () => { 
+        sidebar.classList.remove("collapsed"); 
+    });
+
+    // Lógica para FECHAR a sidebar (clique na área do chat)
+    document.querySelector('.chat-container').addEventListener('click', () => {
+        if (!sidebar.classList.contains('collapsed')) {
+            sidebar.classList.add('collapsed');
+        }
+    });
+
+    themeToggle.addEventListener("change", () => { 
+        document.body.classList.toggle("dark-theme"); 
+        localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); 
+    });
+
+    ttsToggle.addEventListener('change', () => { 
+        if (!ttsToggle.checked) { 
+            speechSynthesis.cancel(); 
+        } 
+    });
+
+    logoutBtn.addEventListener('click', () => {
+        if (confirm("Tem certeza que deseja sair?")) {
+            localStorage.removeItem('jwtToken');
+            localStorage.removeItem('jarvisAppState');
             window.location.href = 'login.html';
         }
     });
-    function render() { renderSidebar(); renderMessages(); }
-
-    // A inicialização agora acontece após a verificação do token
-    loadState();
-    render();
-});
+    
+        function render() { 
+            renderSidebar(); 
+            renderMessages(); 
+        }
+    });
