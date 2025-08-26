@@ -294,33 +294,40 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 
-/* ========================================================== */
-/* === [VERSÃO FINAL] Estilos para Responsividade === */
-/* ========================================================== */
-
+/* Ajuste para telas menores */
 @media (max-width: 768px) {
     .sidebar {
-        /* Posiciona a sidebar para flutuar sobre o conteúdo */
         position: absolute;
         z-index: 1000;
         height: 100%;
-        width: 260px; /* Garante uma largura fixa */
-        
-        /* Começa escondida fora da tela à esquerda */
+        width: 260px;
         left: -260px; 
-        transition: left 0.3s ease-in-out; /* Anima a propriedade 'left' */
-
-        /* Adiciona uma sombra para dar profundidade */
+        transition: left 0.3s ease-in-out;
         box-shadow: 4px 0px 15px rgba(0,0,0,0.2);
     }
 
-    /* Nova classe que o JavaScript vai adicionar para MOSTRAR a sidebar */
     .sidebar-visible {
-        left: 0; /* Move a sidebar para dentro da tela */
+        left: 0;
     }
 
     .chat-container {
-        /* Garante que o chat sempre ocupe 100% da tela */
+        display: flex;
+        flex-direction: column;
+        height: 100vh; /* Faz o chat ocupar a altura inteira da tela */
         width: 100%;
+        overflow: hidden; /* Evita barra lateral extra */
+    }
+
+    .messages {
+        flex: 1; /* Ocupa todo espaço disponível */
+        overflow-y: auto; /* Permite rolagem nas mensagens */
+        padding: 10px;
+    }
+
+    .input-area {
+        flex-shrink: 0; /* Não deixa encolher */
+        padding: 10px;
+        background: #fff;
+        border-top: 1px solid #ddd;
     }
 }
