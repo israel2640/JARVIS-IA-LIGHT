@@ -130,6 +130,10 @@ def get_current_admin_user(token: str = Depends(oauth2_scheme)):
 # ==========================================================
 # === ENDPOINTS DE AUTENTICAÇÃO E ADMINISTRAÇÃO
 # ==========================================================
+@app.get("/")
+async def health_check():
+    """Endpoint simples para verificação de status."""
+    return {"status": "ok"}
 
 @app.post("/api/auth/login", response_model=Token)
 async def login_for_access_token(form_data: UserLogin):
