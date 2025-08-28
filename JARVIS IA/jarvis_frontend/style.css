@@ -187,4 +187,21 @@ input:checked + .slider:before { transform: translateX(20px); }
     #sidebar-toggle-open {
         display: block;
     }
+
+    /* --- CORREÇÃO ADICIONADA AQUI --- */
+    .chat-messages {
+        /* Adiciona um espaçamento no final da lista de mensagens */
+        padding-bottom: 80px; 
+    }
+
+    .chat-input-form {
+        /* Garante que o campo de input fique fixo no fundo */
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%; /* Garante que ocupe toda a largura */
+        background-color: var(--background-color);
+        z-index: 999;
+    }
 }
