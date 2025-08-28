@@ -174,10 +174,15 @@ async def update_user(email: str, user_update: UserUpdate, admin_user: dict = De
 
 @app.delete("/api/admin/users/{email}")
 async def delete_user(email: str, admin_user: dict = Depends(get_current_admin_user)):
+    # PASSO 1: Excluir as preferências associadas ao e-mail
+    supabase.table('preferencias').delete().eq('user_email', email).execute()
+
+    # PASSO 2: Excluir o próprio usuário da tabela de usuários
     response = supabase.table('usuarios').delete().eq('email', email).execute()
+    
     if not response.data:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    return {"message": f"Usuário {email} excluído com sucesso."}
+    return {"message": f"Usuário {email} e todas as suas preferências foram excluídos com sucesso."}
         
 # ==========================================================
 # === ENDPOINTS DE PREFERÊNCIAS
