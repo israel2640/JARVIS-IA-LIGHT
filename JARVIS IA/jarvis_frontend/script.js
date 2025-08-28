@@ -50,12 +50,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const userRole = userData ? userData.role : null;
 
     if (userRole === 'admin') {
-        // Se for admin, cria e exibe o link para o painel de administração
         const adminPanelLink = document.createElement('a');
         adminPanelLink.href = 'admin.html';
         adminPanelLink.textContent = 'Painel do Administrador';
-        adminPanelLink.className = 'admin-panel-link'; // Adicione estilo para esta classe no seu CSS
-        // Insere o link no rodapé da barra lateral como exemplo
+        adminPanelLink.className = 'admin-panel-link';
         const sidebarFooter = document.querySelector('.sidebar-footer');
         if (sidebarFooter) {
             sidebarFooter.prepend(adminPanelLink);
@@ -124,7 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function deleteChat(chatId) { if (confirm(`Tem certeza que deseja apagar o chat "${state.chats[chatId].title}"?`)) { delete state.chats[chatId]; if (state.currentChatId === chatId) { const remainingChats = Object.values(state.chats).sort((a, b) => b.createdAt - a.createdAt); state.currentChatId = remainingChats.length > 0 ? remainingChats[0].id : null; } if (!state.currentChatId) { createNewChat(); } else { saveState(); render(); } } }
     function editChatTitle(chatId) { const newTitle = prompt("Digite o novo título do chat:", state.chats[chatId].title); if (newTitle && newTitle.trim() !== "") { state.chats[chatId].title = newTitle.trim(); saveState(); render(); } }
     async function generateAndSetTitle(chatId) { const chat = state.chats[chatId]; if (chat.title === "Novo Chat" && chat.messages.length === 2) { try { 
-        // [EDITADO] Adicionado cabeçalho de autorização
         const response = await fetch(titleApiUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ history: chat.messages }) }); 
         const data = await response.json(); if (data.title) { chat.title = data.title; saveState(); renderSidebar(); } } catch (error) { console.error("Falha ao gerar título:", error); } } }
     
@@ -144,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isCodeRequest) {
              const jarvisMessageElement = addMessageToUI("assistant", "Gerando o código para você, um momento...");
             try {
-                // [EDITADO] Adicionado cabeçalho de autorização
                 const response = await fetch(codeGenApiUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ prompt: userMessage }) });
                 const data = await response.json();
                 jarvisMessageElement.innerHTML = marked.parse(data.structured_content);
@@ -190,22 +186,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }
+    
     newChatBtn.addEventListener("click", createNewChat);
-    sidebarToggleOpen.addEventListener("click", () => { sidebar.classList.toggle("collapsed"); });
+    sidebarToggleOpen.addEventListener("click", (event) => { 
+    event.stopPropagation(); // Impede que o clique "vaze" para o fundo
+    sidebar.classList.toggle("collapsed"); 
+});
+    
+    const chatContainer = document.querySelector(".chat-container");
+    chatContainer.addEventListener("click", () => {
+        if (window.innerWidth <= 768 && !sidebar.classList.contains("collapsed")) {
+            sidebar.classList.add("collapsed");
+        }
+    });
+
     themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
     ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
+
     // --- [NOVO] LÓGICA DE LOGOUT ---
     logoutBtn.addEventListener('click', () => {
-        // Mostra uma confirmação para o usuário
         if (confirm("Tem certeza que deseja sair?")) {
-            // Limpa os dados da sessão do navegador
             localStorage.removeItem('jwtToken');
-            localStorage.removeItem('jarvisAppState'); // Limpa o histórico de chats também
-
-            // Redireciona para a página de login
+            localStorage.removeItem('jarvisAppState');
             window.location.href = 'login.html';
         }
     });
+    
     function render() { renderSidebar(); renderMessages(); }
 
     // A inicialização agora acontece após a verificação do token

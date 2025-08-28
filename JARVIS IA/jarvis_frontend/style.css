@@ -1,4 +1,4 @@
-/* style.css */
+/* style.css - VERSÃO FINAL E CORRIGIDA */
 
 /* Definição das variáveis de cores para os temas */
 :root {
@@ -32,13 +32,14 @@ body.dark-theme {
 /* Estilos Gerais e Layout */
 * { box-sizing: border-box; }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+html, body {
     margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--background-color);
     color: var(--text-color);
     transition: background-color 0.3s, color 0.3s;
-    overflow: hidden; /* Evita barras de rolagem indesejadas */
+    overflow: hidden;
 }
 
 .app-container {
@@ -46,34 +47,36 @@ body {
     height: 100vh;
 }
 
-/* Estilos da Sidebar */
+/* ================================== */
+/* === ESTILOS UNIFICADOS DA SIDEBAR === */
+/* ================================== */
 .sidebar {
     width: 260px;
-    flex-shrink: 0; /* Impede que a sidebar encolha */
+    flex-shrink: 0;
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
+    transition: margin-left 0.3s ease-in-out;
+    
+    /* Regras de Flexbox que fazem o rodapé funcionar */
     display: flex;
     flex-direction: column;
-    transition: margin-left 0.3s ease-in-out;
 }
 
 .sidebar.collapsed {
     margin-left: -260px;
 }
 
-/* MODIFICADO: Ajustado para o novo layout com o botão "Novo Chat" */
 .sidebar-header {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-header h2 { font-size: 1.2rem; margin: 0; text-align: center; }
+.sidebar-header h2 {
+    font-size: 1.2rem;
+    margin: 0;
+    text-align: center;
+}
 
-/* NOVO: Estilos para o botão "Novo Chat" */
 .new-chat-button {
     background-color: var(--user-bubble-bg);
     color: white;
@@ -87,6 +90,7 @@ body {
     justify-content: center;
     gap: 0.5rem;
     transition: opacity 0.2s;
+    margin-top: 1rem;
 }
 
 .new-chat-button:hover {
@@ -94,173 +98,65 @@ body {
 }
 
 .chat-history {
-    flex-grow: 1;
+    flex-grow: 1; /* Faz a lista de chats ocupar o espaço vazio */
     list-style: none;
-    padding: 0.5rem; /* Ajustado */
+    padding: 0.5rem;
     margin: 0;
-    overflow-y: auto; /* Adicionado para permitir rolagem se houver muitos chats */
-}
-
-/* MODIFICADO: Estilos para os novos itens de histórico dinâmicos */
-.chat-history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-bottom: 0.25rem; /* Ajustado */
-    transition: background-color 0.2s;
-}
-
-.chat-history-item:hover {
-    background-color: var(--input-bg);
-}
-
-.chat-history-item.active {
-    background-color: var(--user-bubble-bg);
-    color: white;
-}
-.chat-history-item.active .history-item-buttons .icon-button {
-    color: white;
-}
-
-.history-item-title {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-right: 0.5rem;
-}
-
-/* NOVO: Estilos para os botões de editar/apagar */
-.history-item-buttons {
-    display: flex;
-    gap: 0.25rem;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.chat-history-item:hover .history-item-buttons,
-.chat-history-item.active .history-item-buttons {
-    visibility: visible;
-    opacity: 1;
-}
-
-.history-item-buttons .icon-button i {
-    font-size: 1.2rem;
+    overflow-y: auto; /* Adiciona rolagem se a lista for longa */
 }
 
 .sidebar-footer {
-    display: flex;
-    flex-direction: column; 
-    gap: 0.5rem;
     padding: 1rem;
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0; /* Impede que o rodapé encolha */
 }
 
 .sidebar-footer-controls {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    width: 100%;
 }
 
-.tts-control {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    color: var(--icon-color);
+.admin-panel-link {
+    display: block;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    background-color: var(--jarvis-bubble-bg);
+    color: var(--text-color);
+    text-decoration: none;
+    text-align: center;
+    font-weight: 500;
 }
 
-/* Estilos do Chat Principal */
-.chat-container {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background-color: var(--chat-header-bg);
-    border-bottom: 1px solid var(--border-color);
-}
-
+/* ====================================== */
+/* === ESTILOS DO CHAT E OUTROS ITENS === */
+/* ====================================== */
+.chat-history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 8px; cursor: pointer; margin-bottom: 0.25rem; transition: background-color 0.2s; }
+.chat-history-item:hover { background-color: var(--input-bg); }
+.chat-history-item.active { background-color: var(--user-bubble-bg); color: white; }
+.chat-history-item.active .history-item-buttons .icon-button { color: white; }
+.history-item-title { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 0.5rem; }
+.history-item-buttons { display: flex; gap: 0.25rem; visibility: hidden; opacity: 0; transition: opacity 0.2s; }
+.chat-history-item:hover .history-item-buttons, .chat-history-item.active .history-item-buttons { visibility: visible; opacity: 1; }
+.history-item-buttons .icon-button i { font-size: 1.2rem; }
+.tts-control { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--icon-color); }
+.chat-container { flex-grow: 1; display: flex; flex-direction: column; }
+.chat-header { display: flex; align-items: center; gap: 1rem; padding: 1rem; background-color: var(--chat-header-bg); border-bottom: 1px solid var(--border-color); }
 .chat-header h1 { font-size: 1.2rem; margin: 0; }
-/* Apenas garantimos que o botão de toggle esteja sempre visível */
 #sidebar-toggle-open { display: block; }
-
-
-.chat-messages {
-    flex-grow: 1;
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-/* Estilos para as bolhas de mensagem (sem alteração) */
+.chat-messages { flex-grow: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
 .message { padding: 0.8rem 1rem; border-radius: 18px; max-width: 85%; line-height: 1.5; word-wrap: break-word; }
 .user-message { background-color: var(--user-bubble-bg); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
 .jarvis-message { background-color: var(--jarvis-bubble-bg); color: var(--jarvis-bubble-text); align-self: flex-start; border-bottom-left-radius: 4px; }
-
-/* NOVO: Estilos para blocos de código gerados pelo Markdown */
-.jarvis-message pre {
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 1rem;
-    border-radius: 8px;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-.jarvis-message code {
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.9rem;
-}
-
-.chat-input-form {
-    display: flex;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
-    background-color: var(--background-color);
-}
-
-#message-input {
-    flex-grow: 1;
-    padding: 0.75rem 1rem;
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    font-size: 1rem;
-}
+.jarvis-message pre { background-color: rgba(0, 0, 0, 0.2); padding: 1rem; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+.jarvis-message code { font-family: "Courier New", Courier, monospace; font-size: 0.9rem; }
+.chat-input-form { display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--border-color); background-color: var(--background-color); }
+#message-input { flex-grow: 1; padding: 0.75rem 1rem; border-radius: 20px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-color); font-size: 1rem; }
 #message-input:focus { outline: none; border-color: var(--user-bubble-bg); }
-
-.icon-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--icon-color);
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-}
-.icon-button:hover {
-    background-color: var(--input-bg);
-}
+.icon-button { background: none; border: none; cursor: pointer; color: var(--icon-color); padding: 0.5rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background-color 0.2s; }
+.icon-button:hover { background-color: var(--input-bg); }
 .icon-button i { font-size: 1.5rem; }
-
-/* Estilos do Theme Switcher (sem alteração) */
 .theme-switcher { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--icon-color); }
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
@@ -269,63 +165,26 @@ body {
 input:checked + .slider { background-color: var(--user-bubble-bg); }
 input:checked + .slider:before { transform: translateX(20px); }
 
-/* Estiliza o link para se parecer com um botão/item da barra lateral */
-.admin-panel-link {
-    display: block;
-    padding: 0.75rem;
-    margin: 0.5rem; /* Adiciona um espaçamento consistente */
-    border-radius: 8px;
-    background-color: var(--jarvis-bubble-bg); /* Cor de fundo sutil */
-    color: var(--text-color);
-    text-decoration: none;
-    text-align: center;
-    font-weight: 500;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-/* Efeito hover para dar feedback ao usuário */
-.admin-panel-link:hover {
-    background-color: var(--user-bubble-bg);
-    color: white;
-}
-
-/* Garante que o link fique posicionado acima dos controles de tema/voz */
-.sidebar-footer {
-    /* Transforma o footer em uma coluna para organizar os itens verticalmente */
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem; /* Espaçamento entre o link e os controles */
-    padding: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-
+/* ================================== */
+/* === REGRAS PARA TELAS PEQUENAS === */
+/* ================================== */
 @media (max-width: 768px) {
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;              /* ocupa a tela toda */
-    }
-
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;           /* mensagens rolam */
-        padding-bottom: 80px;       /* espaço pro input */
-    }
-
-    .chat-input-form {
+    .sidebar {
         position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        padding: 10px;
-        background: #fff;
-        border-top: 1px solid #ddd;
-        z-index: 999;
+        height: 100%;
+        z-index: 1000;
+        margin-left: 0;
     }
 
-    .chat-input-form input {
-        flex: 1;
+    .sidebar.collapsed {
+        margin-left: -260px;
+    }
+
+    .chat-container {
+        width: 100%;
+    }
+
+    #sidebar-toggle-open {
+        display: block;
     }
 }
