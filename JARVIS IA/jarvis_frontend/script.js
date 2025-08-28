@@ -163,9 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
             let responseLang = "pt-BR";
             const url = new URL(streamApiUrl);
             url.searchParams.append('message', userMessage);
-            url.searchParams.append('history', JSON.stringify(currentChat.messages));
-            // [NOTA] EventSource não suporta cabeçalhos de autorização customizados de forma padrão.
-            // A proteção deste endpoint no backend precisa ser feita por outros meios (ex: cookies ou tokens na URL).
+            url.searchParams.append('history', JSON.stringify(currentChat.messages));            
+            url.searchParams.append('token', token);
             const eventSource = new EventSource(url);
             eventSource.addEventListener('metadata', (event) => {
                 const data = JSON.parse(event.data);

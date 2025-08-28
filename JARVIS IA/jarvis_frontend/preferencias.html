@@ -31,35 +31,51 @@
         </form>
     </div>
 
-    <script>
-        const BACKEND_URL = "https://jarvis-ia-backend.onrender.com"; // SUA URL DA RENDER
+<script>
+        const BACKEND_URL = "https://jarvis-ia-backend.onrender.com"; // Verifique se esta é sua URL correta
         const token = localStorage.getItem('jwtToken');
         const preferencesList = document.getElementById('preferences-list');
         const addPrefForm = document.getElementById('add-pref-form');
 
         async function fetchAndRenderPreferences() {
-            if (!token) { window.location.href = 'login.html'; return; }
-            
-            const response = await fetch(`${BACKEND_URL}/api/preferences`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const prefs = await response.json();
-            
-            preferencesList.innerHTML = '';
-            if (prefs.length === 0) {
-                preferencesList.innerHTML = '<p style="text-align:center;">Nenhuma preferência salva.</p>';
+            if (!token) { 
+                window.location.href = 'login.html'; 
+                return; 
             }
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/preferences`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-            prefs.forEach(pref => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'pref-item';
-                itemDiv.innerHTML = `
-                    <input type="text" value="${pref.topico}" disabled>
-                    <input type="text" value="${pref.valor}" data-id="${pref.id}" class="pref-value-input">
-                    <button class="delete-btn" data-id="${pref.id}">🗑️ Excluir</button>
-                `;
-                preferencesList.appendChild(itemDiv);
-            });
+                if (!response.ok) {
+                    throw new Error('Falha ao buscar preferências.');
+                }
+                
+                const prefs = await response.json();
+                
+                preferencesList.innerHTML = ''; // Limpa a lista antes de renderizar
+                if (prefs.length === 0) {
+                    preferencesList.innerHTML = '<p style="text-align:center;">Nenhuma preferência salva.</p>';
+                    return;
+                }
+
+                prefs.forEach(pref => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'pref-item';
+                    // Garante que o tópico seja exibido com a primeira letra maiúscula
+                    const displayTopic = pref.topico.charAt(0).toUpperCase() + pref.topico.slice(1);
+                    itemDiv.innerHTML = `
+                        <input type="text" value="${displayTopic}" disabled>
+                        <input type="text" value="${pref.valor}" data-id="${pref.id}" class="pref-value-input">
+                        <button class="delete-btn" data-id="${pref.id}">🗑️ Excluir</button>
+                    `;
+                    preferencesList.appendChild(itemDiv);
+                });
+            } catch (error) {
+                preferencesList.innerHTML = `<p style="text-align:center; color:red;">${error.message}</p>`;
+                console.error(error);
+            }
         }
 
         addPrefForm.addEventListener('submit', async (e) => {
@@ -73,7 +89,7 @@
                 body: JSON.stringify({ topico, valor })
             });
             addPrefForm.reset();
-            fetchAndRenderPreferences();
+            fetchAndRenderPreferences(); // Re-renderiza a lista
         });
 
         preferencesList.addEventListener('change', async (e) => {
@@ -96,11 +112,12 @@
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    fetchAndRenderPreferences();
+                    fetchAndRenderPreferences(); // Re-renderiza a lista
                 }
             }
         });
 
+        // Chama a função para carregar os dados quando a página é aberta
         document.addEventListener('DOMContentLoaded', fetchAndRenderPreferences);
     </script>
 </body>

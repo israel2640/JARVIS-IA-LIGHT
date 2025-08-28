@@ -1,186 +1,147 @@
 # core_logic.py
 import json
+import asyncio
+from jose import jwt, JWTError
 import requests
-import base64
-from config import openai_client, SERPER_API_KEY
-from utils import detectar_idioma_com_ia, chamar_openai_com_retries
-# Importe outras funções do utils se precisar, como carregar_preferencias
 
-# NOTA: As funções `carregar_modelo_embedding` e `inicializar_memoria_dinamica`
-# deverão ser chamadas uma vez quando o servidor iniciar (em main.py) e o
-# modelo e vetores passados como argumentos para as funções que os usam.
-
-def analisar_metadados_prompt(prompt_usuario):
-    # ... (código da função copiado de app.py, usando openai_client) ...
-    pass
-
-def responder_com_inteligencia(pergunta_usuario, historico_chat, memoria, preferencias, ultima_emocao):
-    # Esta função é a fusão da sua `responder_com_inteligencia` e `processar_entrada_usuario`.
-    # Ela não deve ter nenhuma chamada a `st.` (streamlit).
-    
-    idioma_da_pergunta = detectar_idioma_com_ia(pergunta_usuario)
-    # ... (toda a sua lógica de construção de prompt, busca na memória local, etc.) ...
-
-    # A função deve apenas CONSTRUIR o prompt e chamar a IA.
-    # A decisão de salvar o chat, etc., fica no endpoint da API em main.py.
-    prompt_sistema = "..." # Construa seu prompt aqui
-    mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
-    mensagens_para_api.extend(historico_chat)
-
-    resposta_modelo = chamar_openai_com_retries(mensagens_para_api)
-    
-    if resposta_modelo:
-        return resposta_modelo.choices[0].message.content
-    return "Desculpe, não consegui obter uma resposta no momento."
-
-def gerar_imagem_com_dalle(prompt_para_imagem):
-    try:
-        response = openai_client.images.generate(
-            model="dall-e-3", prompt=prompt_para_imagem, size="1024x1024", n=1
-        )
-        image_url = response.data[0].url
-        image_response = requests.get(image_url)
-        image_response.raise_for_status()
-        image_base64 = base64.b64encode(image_response.content).decode('utf-8')
-        return f"data:image/png;base64,{image_base64}"
-    except Exception as e:
-        print(f"Erro ao gerar imagem com DALL-E: {e}")
-        return None
-
-def buscar_na_internet(pergunta_usuario):
-    # ... (código da função copiado de app.py, usando SERPER_API_KEY) ...
-    pass
+# Módulos e conexões do projeto
+from config import openai_client, supabase, SERPER_API_KEY, SECRET_KEY, ALGORITHM
 
 # ==========================================================
-# === NOVA FUNÇÃO ADICIONADA CIRURGICAMENTE
-# ==========================================================
-def gerar_titulo_conversa(historico: list):
-    """
-    Usa a IA para criar um título curto para a conversa com base nas primeiras mensagens.
-    """
-    if not historico:
-        return "Novo Chat"
-
-    # Pega as 4 primeiras mensagens para ter contexto suficiente
-    conversa_inicial = "\n".join(
-        [f"{msg['role']}: {msg['content']}" for msg in historico[:4]]
-    )
-
-    prompt = f"""
-    Abaixo está o início de uma conversa entre um usuário e um assistente de IA.
-    Sua tarefa é criar um título curto e conciso em português (máximo de 5 palavras) que resuma o tópico principal.
-    Responda APENAS com o título, sem aspas, nenhuma outra palavra ou pontuação.
-
-    CONVERSA:
-    {conversa_inicial}
-
-    TÍTULO CURTO:
-    """
-    try:
-        # Usamos um modelo rápido e barato para esta tarefa simples
-        resposta_modelo = openai_client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=15,
-        )
-        titulo = resposta_modelo.choices[0].message.content.strip().replace('"', '')
-        return titulo if titulo else "Chat"
-    except Exception as e:
-        print(f"Erro ao gerar título: {e}")
-        return "Chat"
-
+# === FUNÇÕES DE LÓGICA DO PROJETO
 # ==========================================================
 
-def gerar_pagina_web_completa(descricao_usuario: str):
-    """
-    Usa a IA com um prompt detalhado para gerar uma página web completa (HTML/CSS/JS)
-    com uma estrutura de resposta bem definida em Markdown.
-    """
-    print(f"Gerando página web completa para: '{descricao_usuario}'")
-
-    # ESTE É O PROMPT QUE FAZ A MÁGICA
-    prompt_detalhado = f"""
-    Você é um assistente especialista em desenvolvimento web full-stack. Sua tarefa é gerar um exemplo de código completo e funcional com base na solicitação do usuário.
-
-    Você DEVE ESTRITURAR sua resposta OBRIGATORIAMENTE no seguinte formato Markdown, sem nenhuma variação:
-
-    1.  **Introdução:** Comece com uma única frase amigável que descreva o que o código faz.
-    2.  **Estrutura de Arquivos:** Forneça uma seção `### Estrutura de Arquivos` mostrando a disposição dos arquivos em um bloco de código.
-    3.  **Código-Fonte:** Para cada arquivo (ex: `index.html`, `styles.css`, `script.js`), crie uma seção separada com um cabeçalho numerado (ex: `### 1. `index.html``). Dentro de cada seção, coloque o código completo dentro de um bloco de código Markdown com a linguagem apropriada (ex: ```html ... ```).
-    4.  **Como Usar:** Termine com uma seção `### Como Usar` explicando em 2 ou 3 passos simples como executar o projeto.
-
-    NÃO inclua nenhuma outra conversa, explicação ou texto fora desta estrutura.
-
-    ---
-    SOLICITAÇÃO DO USUÁRIO: "{descricao_usuario}"
-    ---
-    """
-
+def get_user_email_from_token(token: str):
+    """Descodifica o token JWT para extrair o e-mail do utilizador de forma segura."""
     try:
-        # Usamos um modelo mais capaz para garantir a qualidade da estrutura e do código
-        resposta_modelo = openai_client.chat.completions.create(
-            model='gpt-4o', # Recomendo um modelo mais forte como gpt-4o para esta tarefa
-            messages=[{"role": "user", "content": prompt_detalhado}]
-        )
-        conteudo_estruturado = resposta_modelo.choices[0].message.content
-        return conteudo_estruturado
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise ValueError("Token inválido: e-mail não encontrado.")
+        return email
+    except JWTError as e:
+        raise ValueError(f"Token inválido ou expirado: {e}")
+
+def carregar_preferencias_do_usuario(email: str):
+    """Busca as preferências de um utilizador no Supabase."""
+    try:
+        response = supabase.table('preferencias').select('topico, valor').eq('user_email', email).execute()
+        if response.data:
+            return {item['topico']: item['valor'] for item in response.data}
     except Exception as e:
-        print(f"Erro ao gerar página web completa: {e}")
-        return "Desculpe, ocorreu um erro ao tentar gerar o código. Por favor, tente novamente."
-    
+        print(f"Erro ao carregar preferências: {e}")
+    return {}
+
+def adicionar_ou_atualizar_preferencia_manual(email_usuario: str, topico: str, valor: str):
+    """
+    Adiciona ou atualiza uma preferência para um utilizador manualmente.
+    Retorna (True, "Mensagem de sucesso") ou (False, "Mensagem de erro").
+    """
+    if not email_usuario or not topico or not valor:
+        return (False, "E-mail, tópico e valor são obrigatórios.")
+    try:
+        dados_para_upsert = {
+            "user_email": email_usuario,
+            "topico": topico.strip().lower(),
+            "valor": valor.strip()
+        }
+        response = supabase.table('preferencias').upsert(
+            dados_para_upsert, on_conflict='user_email, topico'
+        ).execute()
+        if response.data:
+            mensagem = f"Preferência '{topico}' guardada com sucesso para {email_usuario}."
+            return (True, mensagem)
+        else:
+            return (False, "Falha ao guardar preferência no Supabase.")
+    except Exception as e:
+        return (False, f"Erro inesperado ao guardar preferência: {e}")
+
 def precisa_buscar_na_web(pergunta: str):
-    """
-    Usa a IA para determinar se uma pergunta requer uma busca na web.
-    """
+    """Usa a IA para determinar se uma pergunta requer uma busca na web."""
     try:
-        # Prompt aprimorado para ser mais direto e dar exemplos
         prompt = f"""
-        Analise a pergunta do usuário. A resposta exige conhecimento sobre eventos ou informações muito recentes (ocorridos hoje ou nos últimos dias)?
-        Perguntas sobre notícias, resultados esportivos, cotações de moedas, previsão do tempo ou eventos atuais exigem uma busca na web.
+        Analise a pergunta do utilizador. A resposta exige conhecimento sobre eventos ou informações muito recentes (ocorridos hoje ou nos últimos dias)?
+        Perguntas sobre notícias, resultados desportivos, cotações de moedas, previsão do tempo ou eventos atuais exigem uma busca na web.
         Responda APENAS com 'SIM' ou 'NÃO'.
-
         Pergunta: "{pergunta}"
         """
         response = openai_client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=3,
-            temperature=0
+            model='gpt-4o-mini', messages=[{"role": "user", "content": prompt}], max_tokens=3, temperature=0
         )
         decisao = response.choices[0].message.content.strip().upper()
-        print(f"Decisão da IA para buscar na web: {decisao}") # Adicionado para debug
         return "SIM" in decisao
-    except Exception as e:
-        print(f"Erro ao verificar necessidade de busca na web: {e}")
+    except Exception:
         return False
 
-
 def buscar_na_internet(query: str):
-    """
-    Busca na internet usando a API da Serper e retorna um contexto formatado.
-    """
-    if not SERPER_API_KEY:
-        return "ERRO: A chave SERPER_API_KEY não está configurada."
-
+    """Busca na internet usando a API da Serper."""
+    if not SERPER_API_KEY: return "ERRO: A chave SERPER_API_KEY não está configurada."
     url = "https://google.serper.dev/search"
     payload = json.dumps({"q": query, "gl": "br", "hl": "pt-br"})
     headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
-
     try:
         response = requests.post(url, headers=headers, data=payload)
         response.raise_for_status()
         results = response.json()
-
-        # Formata os resultados de forma clara para a IA
-        contexto_formatado = ""
+        contexto = ""
         if "organic" in results:
-            for item in results["organic"][:5]: # Pega os 5 primeiros resultados
-                titulo = item.get("title", "N/A")
-                link = item.get("link", "N/A")
-                snippet = item.get("snippet", "N/A")
-                contexto_formatado += f"- Título: {titulo}\n  Resumo: {snippet}\n  Fonte: 🔗 [Acessar site]({link})\n\n"
-        
-        return contexto_formatado if contexto_formatado else "Nenhum resultado relevante encontrado."
+            for item in results["organic"][:5]:
+                contexto += f"* [{item.get('title', 'N/A')}]({item.get('link', '#')}) - {item.get('snippet', 'N/A').replace('\n', ' ')}\n"
+        return contexto if contexto else "Nenhum resultado relevante encontrado."
     except Exception as e:
-        print(f"Erro na busca da Serper: {e}")
         return f"Ocorreu um erro ao tentar buscar na web: {e}"
+
+def gerar_titulo_conversa(historico: list):
+    """Usa a IA para criar um título curto para a conversa."""
+    if not historico or len(historico) < 2: return "Novo Chat"
+    conversa_inicial = "\n".join([f"{msg['role']}: {msg['content']}" for msg in historico[:4]])
+    prompt = f"""Crie um título curto e conciso em português (máximo 5 palavras) para a seguinte conversa. Responda APENAS com o título.\nCONVERSA:\n{conversa_inicial}\nTÍTULO:"""
+    try:
+        resposta_modelo = openai_client.chat.completions.create(
+            model='gpt-4o-mini', messages=[{"role": "user", "content": prompt}], max_tokens=15
+        )
+        return resposta_modelo.choices[0].message.content.strip().replace('"', '')
+    except Exception:
+        return "Chat"
+
+async def stream_chat_generator(message: str, history_json: str, token: str):
+    """
+    Função geradora final que busca preferências e gera a resposta da IA.
+    """
+    try:
+        user_email = get_user_email_from_token(token)
+        preferencias = carregar_preferencias_do_usuario(user_email)
+
+        if precisa_buscar_na_web(message):
+            contexto_da_web = buscar_na_internet(message)
+            prompt_sistema = f"""
+            Você é Jarvis, um assistente de IA que resume notícias da web.
+            INSTRUÇÕES CRÍTICAS: Responda em português. Comece com uma introdução.
+            Os resultados da pesquisa já estão no formato de link Markdown `* [Título](URL) - Resumo`. A sua resposta final DEVE manter este formato de link.
+            RESULTADOS DA PESQUISA:
+            {contexto_da_web}
+            """
+            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
+        else:
+            history = json.loads(history_json)
+            prompt_sistema = "Você é Jarvis, um assistente prestável e amigável."
+            if preferencias:
+                nome_usuario = preferencias.get('nome', 'utilizador')
+                prompt_sistema += f"\n\nContexto sobre o utilizador ({nome_usuario.capitalize()}): {json.dumps(preferencias, ensure_ascii=False)}. Use essas informações para personalizar as suas respostas sempre que for relevante."
+            
+            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
+            mensagens_para_api.extend(history)
+            mensagens_para_api.append({"role": "user", "content": message})
+
+        stream = openai_client.chat.completions.create(
+            model="gpt-4o", messages=mensagens_para_api, stream=True
+        )
+        for chunk in stream:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield f"data: {json.dumps({'text': content})}\n\n"
+                await asyncio.sleep(0.01)
+                
+    except Exception as e:
+        print(f"Erro no stream: {e}")
+        yield f"data: {json.dumps({'error': 'Ocorreu um erro no servidor.'})}\n\n"

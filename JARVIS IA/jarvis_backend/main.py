@@ -17,27 +17,17 @@ from dotenv import load_dotenv
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 
-# Conexão com Supabase
+# Módulos do projeto e conexões
 from supabase import create_client, Client
-
-# Importa as funções dos outros módulos
-from config import openai_client
+from config import openai_client, supabase, SECRET_KEY, ALGORITHM
 import core_logic
-# import data_analysis # Removido se não estiver em uso para simplificar
-import utils
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
 # ==========================================================
-# === CONFIGURAÇÃO DE SERVIÇOS EXTERNOS
+# === CONFIGURAÇÃO DE SEGURANÇA
 # ==========================================================
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "sua-chave-secreta-padrao")
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -77,27 +67,23 @@ class TitleGenerationInput(BaseModel):
 class TitleGenerationOutput(BaseModel):
     title: str
     
-class ChatInput(BaseModel):
-    message: str
-    history: list = []
-
 # ==========================================================
 # === INICIALIZAÇÃO DA APLICAÇÃO
 # ==========================================================
 app = FastAPI(title="Jarvis IA Backend")
 
-# Lista de origens permitidas
 origins = [
     "https://jarvis-ia-frontend.onrender.com",
     "http://127.0.0.1:5500",
+    "http://localhost:5500", # Adicionado para mais flexibilidade local
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, 
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], 
-    allow_headers=["*"], 
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ==========================================================
@@ -140,28 +126,22 @@ async def health_check():
 
 @app.post("/api/auth/login", response_model=Token)
 async def login_for_access_token(form_data: UserLogin):
-    try:
-        response = supabase.table('usuarios').select("email, senha_hash, role").eq('email', form_data.email).execute()
-        if not response.data:
-            raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
-        user = response.data[0]
-        if not verify_password(form_data.password, user["senha_hash"]):
-            raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
-        access_token = create_access_token(data={"sub": user["email"], "role": user["role"]})
-        return {"accessToken": access_token, "token_type": "bearer"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('usuarios').select("email, senha_hash, role").eq('email', form_data.email).execute()
+    if not response.data:
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+    user = response.data[0]
+    if not verify_password(form_data.password, user["senha_hash"]):
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+    access_token = create_access_token(data={"sub": user["email"], "role": user["role"]})
+    return {"accessToken": access_token, "token_type": "bearer"}
 
 # ==========================================================
 # === ENDPOINTS DE ADMINISTRAÇÃO
 # ==========================================================
 @app.get("/api/admin/users")
 async def get_all_users(admin_user: dict = Depends(get_current_admin_user)):
-    try:
-        response = supabase.table('usuarios').select("nome, email, role, data_expiracao").execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('usuarios').select("nome, email, role, data_expiracao").execute()
+    return response.data
 
 @app.post("/api/admin/users")
 async def create_user_subscription(user: UserCreate, admin_user: dict = Depends(get_current_admin_user)):
@@ -170,133 +150,83 @@ async def create_user_subscription(user: UserCreate, admin_user: dict = Depends(
         expiracao = datetime(9999, 12, 31)
     else:
         expiracao = datetime.now(timezone.utc) + timedelta(days=user.dias_duracao)
-    try:
-        response = supabase.table('usuarios').insert({"nome": user.name, "email": user.email, "senha_hash": hashed_password, "role": "user", "data_expiracao": expiracao.isoformat()}).execute()
-        if not response.data:
-            raise HTTPException(status_code=400, detail="E-mail já pode estar em uso ou outro erro ocorreu.")
-    except Exception as e:
-        if "unique constraint" in str(e):
-             raise HTTPException(status_code=400, detail="E-mail já registrado.")
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    response = supabase.table('usuarios').insert({
+        "nome": user.name, "email": user.email, "senha_hash": hashed_password, 
+        "role": "user", "data_expiracao": expiracao.isoformat()
+    }).execute()
+    
+    if "unique constraint" in str(response.data):
+         raise HTTPException(status_code=400, detail="E-mail já registrado.")
+    if not response.data:
+        raise HTTPException(status_code=400, detail="E-mail já pode estar em uso ou outro erro ocorreu.")
     return {"message": f"Usuário {user.name} criado com sucesso."}
 
 @app.put("/api/admin/users/{email}")
 async def update_user(email: str, user_update: UserUpdate, admin_user: dict = Depends(get_current_admin_user)):
-    try:
-        update_data = user_update.model_dump(exclude_unset=True)
-        if not update_data:
-            raise HTTPException(status_code=400, detail="Nenhum dado fornecido para atualização.")
-        response = supabase.table('usuarios').update(update_data).eq('email', email).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-        return {"message": f"Usuário {email} atualizado com sucesso."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    update_data = user_update.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum dado fornecido para atualização.")
+    response = supabase.table('usuarios').update(update_data).eq('email', email).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    return {"message": f"Usuário {email} atualizado com sucesso."}
 
 @app.delete("/api/admin/users/{email}")
 async def delete_user(email: str, admin_user: dict = Depends(get_current_admin_user)):
-    try:
-        response = supabase.table('usuarios').delete().eq('email', email).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-        return {"message": f"Usuário {email} excluído com sucesso."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('usuarios').delete().eq('email', email).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    return {"message": f"Usuário {email} excluído com sucesso."}
         
 # ==========================================================
 # === ENDPOINTS DE PREFERÊNCIAS
 # ==========================================================
 @app.get("/api/preferences")
 async def get_user_preferences(user_email: str = Depends(get_current_user_email)):
-    try:
-        response = supabase.table('preferencias').select('id, topico, valor').eq('user_email', user_email).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('preferencias').select('id, topico, valor').eq('user_email', user_email).execute()
+    return response.data
 
 @app.post("/api/preferences")
 async def create_user_preference(preferencia: PreferenciaCreate, user_email: str = Depends(get_current_user_email)):
-    try:
-        response = supabase.table('preferencias').insert({"user_email": user_email, "topico": preferencia.topico.strip().lower(), "valor": preferencia.valor.strip()}).execute()
-        return response.data[0]
-    except Exception as e:
-        if "unique constraint" in str(e):
-            raise HTTPException(status_code=400, detail="Este tópico de preferência já existe.")
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('preferencias').insert({
+        "user_email": user_email, "topico": preferencia.topico.strip().lower(), "valor": preferencia.valor.strip()
+    }).execute()
+    if "unique constraint" in str(response.data):
+        raise HTTPException(status_code=400, detail="Este tópico de preferência já existe.")
+    return response.data[0]
 
 @app.put("/api/preferences/{pref_id}")
 async def update_user_preference(pref_id: int, preferencia: PreferenciaUpdate, user_email: str = Depends(get_current_user_email)):
-    try:
-        response = supabase.table('preferencias').update({"valor": preferencia.valor}).eq('id', pref_id).eq('user_email', user_email).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('preferencias').update({"valor": preferencia.valor}).eq('id', pref_id).eq('user_email', user_email).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
+    return response.data[0]
 
 @app.delete("/api/preferences/{pref_id}")
 async def delete_user_preference(pref_id: int, user_email: str = Depends(get_current_user_email)):
-    try:
-        response = supabase.table('preferencias').delete().eq('id', pref_id).eq('user_email', user_email).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
-        return {"ok": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    response = supabase.table('preferencias').delete().eq('id', pref_id).eq('user_email', user_email).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
+    return {"ok": True}
 
 # ==========================================================
 # === ENDPOINTS PRINCIPAIS DA APLICAÇÃO (IA)
 # ==========================================================
-async def stream_chat_generator(message: str, history_json: str):
-    try:
-        if core_logic.precisa_buscar_na_web(message):
-            contexto_da_web = core_logic.buscar_na_internet(message)
-            prompt_sistema = f"""
-            Você é Jarvis, um assistente de IA que resume notícias da web.
-            INSTRUÇÕES CRÍTICAS: Responda em português. Comece com uma introdução.
-            Os resultados já estão no formato Markdown `* [Título](URL)`. Sua resposta DEVE manter este formato de link.
-            RESULTADOS DA PESQUISA:
-            {contexto_da_web}
-            """
-            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
-        else:
-            history = json.loads(history_json)
-            prompt_sistema = "Você é Jarvis, um assistente prestativo."
-            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
-            mensagens_para_api.extend(history)
-            mensagens_para_api.append({"role": "user", "content": message})
-
-        stream = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=mensagens_para_api,
-            stream=True,
-        )
-        for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content:
-                yield f"data: {json.dumps({'text': content})}\n\n"
-                await asyncio.sleep(0.01)
-    except Exception as e:
-        error_message = json.dumps({"error": f"Ocorreu um erro no servidor: {e}"})
-        yield f"data: {error_message}\n\n"
-
 @app.get("/chat/stream")
-async def handle_chat_stream(message: str, history: str):
+async def handle_chat_stream(message: str, history: str, token: str):
     return StreamingResponse(
-        stream_chat_generator(message, history),
+        core_logic.stream_chat_generator(message, history, token),
         media_type="text/event-stream"
     )
 
 @app.post("/chat/generate-title", response_model=TitleGenerationOutput)
 async def handle_generate_title(payload: TitleGenerationInput):
-    try:
-        titulo = core_logic.gerar_titulo_conversa(payload.history)
-        return TitleGenerationOutput(title=titulo)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Falha ao gerar o título: {e}")
+    titulo = core_logic.gerar_titulo_conversa(payload.history)
+    return TitleGenerationOutput(title=titulo)
 
 # ==========================================================
-# === Bloco para iniciar o servidor ---
+# === Bloco para iniciar o servidor
 # ==========================================================
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
