@@ -86,7 +86,13 @@ def buscar_na_internet(query: str):
         contexto = ""
         if "organic" in results:
             for item in results["organic"][:5]:
-                contexto += f"* [{item.get('title', 'N/A')}]({item.get('link', '#')}) - {item.get('snippet', 'N/A').replace('\n', ' ')}\n"
+                # --- CORREÇÃO APLICADA AQUI ---
+                # Pega o snippet e limpa o '\n' antes da f-string
+                snippet = item.get('snippet', 'N/A')
+                snippet_limpo = snippet.replace('\n', ' ')
+                
+                # Usa a variável já limpa na f-string
+                contexto += f"* [{item.get('title', 'N/A')}]({item.get('link', '#')}) - {snippet_limpo}\n"
         return contexto if contexto else "Nenhum resultado relevante encontrado."
     except Exception as e:
         return f"Ocorreu um erro ao tentar buscar na web: {e}"
@@ -108,11 +114,19 @@ async def stream_chat_generator(message: str, history_json: str, token: str):
     """
     Função geradora final que busca preferências e gera a resposta da IA.
     """
+    print("\n--- INICIANDO NOVO PEDIDO DE CHAT ---") # <<< DEBUG >>>
     try:
+        # Etapa 1: Autenticação
         user_email = get_user_email_from_token(token)
-        preferencias = carregar_preferencias_do_usuario(user_email)
+        print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}") # <<< DEBUG >>>
 
+        # Etapa 2: Carregar Preferências
+        preferencias = carregar_preferencias_do_usuario(user_email)
+        print(f"[DEBUG] Preferências carregadas para o utilizador: {preferencias}") # <<< DEBUG >>>
+
+        # Etapa 3: Decidir o Caminho (Busca na Web ou Chat Normal)
         if precisa_buscar_na_web(message):
+            print("[DEBUG] Decisão: Busca na web é necessária. A ignorar preferências do utilizador.") # <<< DEBUG >>>
             contexto_da_web = buscar_na_internet(message)
             prompt_sistema = f"""
             Você é Jarvis, um assistente de IA que resume notícias da web.
@@ -123,15 +137,23 @@ async def stream_chat_generator(message: str, history_json: str, token: str):
             """
             mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
         else:
+            print("[DEBUG] Decisão: Não é necessária busca na web. A processar com personalização.") # <<< DEBUG >>>
             history = json.loads(history_json)
             prompt_sistema = "Você é Jarvis, um assistente prestável e amigável."
+            
+            # Etapa 4: Injetar Preferências no Prompt
             if preferencias:
+                print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.") # <<< DEBUG >>>
                 nome_usuario = preferencias.get('nome', 'utilizador')
                 prompt_sistema += f"\n\nContexto sobre o utilizador ({nome_usuario.capitalize()}): {json.dumps(preferencias, ensure_ascii=False)}. Use essas informações para personalizar as suas respostas sempre que for relevante."
+            else:
+                print("[DEBUG] Nenhuma preferência encontrada para este utilizador. A usar prompt padrão.") # <<< DEBUG >>>
             
             mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
             mensagens_para_api.extend(history)
             mensagens_para_api.append({"role": "user", "content": message})
+
+        print(f"[DEBUG] Prompt final do sistema enviado para a OpenAI:\n---\n{prompt_sistema}\n---") # <<< DEBUG >>>
 
         stream = openai_client.chat.completions.create(
             model="gpt-4o", messages=mensagens_para_api, stream=True
@@ -143,5 +165,5 @@ async def stream_chat_generator(message: str, history_json: str, token: str):
                 await asyncio.sleep(0.01)
                 
     except Exception as e:
-        print(f"Erro no stream: {e}")
-        yield f"data: {json.dumps({'error': 'Ocorreu um erro no servidor.'})}\n\n"
+        print(f"[DEBUG CRÍTICO] Ocorreu uma exceção no stream_chat_generator: {e}") # <<< DEBUG >>>
+        yield f"data: {json.dumps({'error': f'Ocorreu um erro no servidor: {e}'})}\n\n"
