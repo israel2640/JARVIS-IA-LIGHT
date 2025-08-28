@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Minhas Preferências - Jarvis IA</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #333; }
+        .pref-item { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .pref-item input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .pref-item button { padding: 8px 12px; border: none; border-radius: 4px; color: white; cursor: pointer; }
+        .delete-btn { background-color: #dc3545; }
+        .form { display: grid; gap: 15px; margin-top: 20px; }
+        .form input, .form button { padding: 12px; border-radius: 5px; border: 1px solid #ccc; }
+        .form button { background-color: #28a745; color: white; border: none; font-size: 16px; }
+        .back-link { display: block; text-align: center; margin-bottom: 20px; font-weight: bold; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">⬅️ Voltar para o Chat</a>
+        <h1>⚙️ Gerenciar Preferências</h1>
+        <div id="preferences-list"></div>
+        <hr>
+        <h2>➕ Adicionar Nova Preferência</h2>
+        <form id="add-pref-form" class="form">
+            <input type="text" id="new-topic" placeholder="Novo Tópico (Ex: cor favorita)" required>
+            <input type="text" id="new-value" placeholder="Valor (Ex: azul)" required>
+            <button type="submit">Adicionar</button>
+        </form>
+    </div>
+
+    <script>
+        const BACKEND_URL = "https://jarvis-ia-backend.onrender.com"; // SUA URL DA RENDER
+        const token = localStorage.getItem('jwtToken');
+        const preferencesList = document.getElementById('preferences-list');
+        const addPrefForm = document.getElementById('add-pref-form');
+
+        async function fetchAndRenderPreferences() {
+            if (!token) { window.location.href = 'login.html'; return; }
+            
+            const response = await fetch(`${BACKEND_URL}/api/preferences`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const prefs = await response.json();
+            
+            preferencesList.innerHTML = '';
+            if (prefs.length === 0) {
+                preferencesList.innerHTML = '<p style="text-align:center;">Nenhuma preferência salva.</p>';
+            }
+
+            prefs.forEach(pref => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'pref-item';
+                itemDiv.innerHTML = `
+                    <input type="text" value="${pref.topico}" disabled>
+                    <input type="text" value="${pref.valor}" data-id="${pref.id}" class="pref-value-input">
+                    <button class="delete-btn" data-id="${pref.id}">🗑️ Excluir</button>
+                `;
+                preferencesList.appendChild(itemDiv);
+            });
+        }
+
+        addPrefForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const topico = document.getElementById('new-topic').value;
+            const valor = document.getElementById('new-value').value;
+            
+            await fetch(`${BACKEND_URL}/api/preferences`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ topico, valor })
+            });
+            addPrefForm.reset();
+            fetchAndRenderPreferences();
+        });
+
+        preferencesList.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('pref-value-input')) {
+                const prefId = e.target.dataset.id;
+                const valor = e.target.value;
+                await fetch(`${BACKEND_URL}/api/preferences/${prefId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ valor })
+                });
+            }
+        });
+
+        preferencesList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const prefId = e.target.dataset.id;
+                if (confirm('Tem certeza que deseja excluir esta preferência?')) {
+                    await fetch(`${BACKEND_URL}/api/preferences/${prefId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    fetchAndRenderPreferences();
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', fetchAndRenderPreferences);
+    </script>
+</body>
+</html>

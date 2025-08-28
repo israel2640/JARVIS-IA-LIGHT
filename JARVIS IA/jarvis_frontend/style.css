@@ -152,13 +152,19 @@ body {
     font-size: 1.2rem;
 }
 
-
 .sidebar-footer {
+    display: flex;
+    flex-direction: column; 
+    gap: 0.5rem;
     padding: 1rem;
     border-top: 1px solid var(--border-color);
+}
+
+.sidebar-footer-controls {
     display: flex;
     justify-content: space-around;
     align-items: center;
+    width: 100%;
 }
 
 .tts-control {
@@ -295,64 +301,33 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 
 @media (max-width: 768px) {
-    
-    /* 1. Esconde a barra lateral por padrão em telas pequenas */
+    /* Garante que o container principal ocupe toda a tela */
+    .app-container {
+        width: 100%;
+        height: 100vh;
+    }
+
     .sidebar {
-        /* Adiciona uma posição absoluta para que ela "flutue" sobre o conteúdo */
+        /* Posiciona a sidebar para flutuar sobre o conteúdo */
         position: absolute;
         z-index: 1000;
         height: 100%;
-        /* Começa escondida fora da tela */
-        margin-left: -260px;
+        width: 260px;
+        
+        /* Começa escondida fora da tela à esquerda */
+        left: -260px; 
+        transition: left 0.3s ease-in-out;
+
+        /* Adiciona uma sombra para dar profundidade */
+        box-shadow: 4px 0px 15px rgba(0,0,0,0.2);
     }
 
-    /* 2. Quando a sidebar não estiver colapsada, ela ocupa a tela */
-    .sidebar.collapsed {
-        margin-left: 0;
+    /* Classe que o JavaScript adiciona para MOSTRAR a sidebar */
+    .sidebar-visible {
+        left: 0;
     }
-    
-    /* 3. Faz o container do chat ocupar toda a largura da tela */
+
     .chat-container {
         width: 100%;
-    }
-    
-    /* 4. Garante que o botão para abrir/fechar a sidebar funcione bem */
-    .chat-header #sidebar-toggle-open {
-        display: block; /* Garante que o botão de abrir/fechar esteja sempre visível */
-    }
-
-    /* 5. Ajusta o tamanho máximo das bolhas de mensagem */
-    .message {
-        max-width: 90%;
-    }
-}
-
-@media (max-width: 768px) {
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;              /* ocupa a tela toda */
-    }
-
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;           /* mensagens rolam */
-        padding-bottom: 80px;       /* espaço pro input */
-    }
-
-    .chat-input-form {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        padding: 10px;
-        background: #fff;
-        border-top: 1px solid #ddd;
-        z-index: 999;
-    }
-
-    .chat-input-form input {
-        flex: 1;
     }
 }
