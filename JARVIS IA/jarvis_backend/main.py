@@ -83,19 +83,17 @@ class TitleGenerationOutput(BaseModel):
 app = FastAPI(title="Jarvis IA Backend")
 
 origins = [
-    # URLs para desenvolvimento local (se você usa 127.0.0.1 ou localhost com a porta 8000)
+    # URLs para desenvolvimento local
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-
-    # URLs para desenvolvimento local (com o Live Server do VSCode, que usa a porta 5500)
     "http://localhost:5500",
     "http://127.0.0.1:5500",
-
+    
     # URL do seu frontend em produção no Render
-    "https://jarvis-ia-frontend.onrender.com",
-
+    "https://jarvis-ia-frontend.onrender.com", 
+    
     # Se você tiver um domínio final ou outro subdomínio
-    "https://jarvis-ia.onrender.com"
+    "https://jarvis-ia.onrender.com" 
 ]
 
 app.add_middleware(
