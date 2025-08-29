@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const attachBtn = document.getElementById("attach-btn");
     const fileInput = document.getElementById("file-input");
     const fileContextArea = document.getElementById("file-context-area");
+    // NOVO SELETOR ADICIONADO AQUI
+    const micBtn = document.getElementById("mic-btn");
     
     // ==========================================================
     // === CONFIGURAÇÃO E ESTADO
@@ -251,6 +253,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
     ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
+
+    // --- LÓGICA DE FALA PARA TEXTO ADICIONADA AQUI ---
+    if ('webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        // Ouve o resultado da fala
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            // Define o texto reconhecido no campo de entrada
+            messageInput.value = transcript;
+            // Dispara o formulário automaticamente para enviar a mensagem
+            chatForm.dispatchEvent(new Event('submit'));
+        };
+
+        // Evento que dispara o reconhecimento ao clicar no botão
+        micBtn.addEventListener("click", () => {
+            // Cancela a síntese de voz, caso esteja em andamento
+            speechSynthesis.cancel(); 
+            recognition.start();
+            messageInput.placeholder = "Ouvindo...";
+            console.log('Reconhecimento de fala iniciado.');
+        });
+
+        // Restaura o placeholder quando o reconhecimento terminar
+        recognition.onend = () => {
+            messageInput.placeholder = "Converse com Jarvis...";
+            console.log('Reconhecimento de fala finalizado.');
+        };
+
+        // Trata erros, como microfone não encontrado
+        recognition.onerror = (event) => {
+            console.error("Erro no reconhecimento de fala:", event.error);
+            messageInput.placeholder = "Erro de voz. Tente digitar.";
+        };
+    } else {
+        console.warn('Web Speech API não suportada no seu navegador.');
+        micBtn.style.display = 'none'; // Esconde o botão se a API não for suportada
+    }
+    // --- FIM DA LÓGICA ADICIONADA ---
 
     // --- LÓGICA DE LOGOUT ---
     logoutBtn.addEventListener('click', () => {

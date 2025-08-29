@@ -83,9 +83,11 @@ class TitleGenerationOutput(BaseModel):
 app = FastAPI(title="Jarvis IA Backend")
 
 origins = [
-    "https://jarvis-ia-frontend.onrender.com",
-    "http://127.0.0.1:5500",
-    "http://localhost:5500", # Adicionado para mais flexibilidade local
+    "http://127.0.0.1:5500",  # Frontend local (para desenvolvimento)
+    "http://localhost:5500",   # Frontend local (outra forma)
+    "https://jarvis-ia-backend.onrender.com", # Domínio do seu próprio backend
+    "https://jarvis-ia-frontend.onrender.com", # Domínio do seu frontend em produção
+    "https://jarvis-ia.onrender.com" # Exemplo de domínio final
 ]
 
 app.add_middleware(

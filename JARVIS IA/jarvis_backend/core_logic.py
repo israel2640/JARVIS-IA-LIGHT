@@ -3,6 +3,7 @@ import json
 import asyncio
 from jose import jwt, JWTError
 import requests
+from typing import Optional
 
 # Módulos e conexões do projeto
 from config import openai_client, supabase, SERPER_API_KEY, SECRET_KEY, ALGORITHM
@@ -138,22 +139,65 @@ def gerar_titulo_conversa(historico: list):
     except Exception:
         return "Chat"
 
-# <--- MODIFICADO: A função agora aceita 'context_id' --->
-async def stream_chat_generator(message: str, history_json: str, token: str, context_id: str = None):
+# ==========================================================
+# === FUNÇÃO PRINCIPAL CORRIGIDA
+# ==========================================================
+
+async def stream_chat_generator(message: str, history_json: str, token: str, context_id: Optional[str] = None):
     """
     Função geradora final que busca preferências, contexto de arquivos e gera a resposta da IA.
     """
-    print("\n--- INICIANDO NOVO PEDIDO DE CHAT ---") # <<< DEBUG >>>
+    print("\n--- INICIANDO NOVO PEDIDO DE CHAT ---")
     try:
         user_email = get_user_email_from_token(token)
-        print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}") # <<< DEBUG >>>
+        print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}")
 
         preferencias = carregar_preferencias_do_usuario(user_email)
-        print(f"[DEBUG] Preferências carregadas para o utilizador: {preferencias}") # <<< DEBUG >>>
+        print(f"[DEBUG] Preferências carregadas para o utilizador: {preferencias}")
 
-        if precisa_buscar_na_web(message):
-            print("[DEBUG] Decisão: Busca na web é necessária. A ignorar preferências do utilizador.") # <<< DEBUG >>>
+        history = json.loads(history_json)
+        
+        # --- LÓGICA DE DECISÃO: PRIORIZAR CONTEXTO DE ARQUIVO ---
+        
+        prompt_sistema = "Você é Jarvis, um assistente prestável e amigável."
+
+        if context_id and context_id in file_contexts:
+            # 1. Se há um ID de contexto, use-o e pule a busca na web.
+            print(f"[DEBUG] Contexto de arquivo encontrado para o ID: {context_id}")
+            contexto_arquivo = file_contexts[context_id]
+            
+            # --- LÓGICA DE TRUNCAGEM DE CONTEÚDO (ADICIONADA) ---
+            LIMITE_CARACTERES = 20000 * 4
+            if len(contexto_arquivo) > LIMITE_CARACTERES:
+                contexto_limitado = contexto_arquivo[:LIMITE_CARACTERES]
+                aviso_ia = (
+                    "\n\nAVISO PARA A IA: O conteúdo completo dos arquivos era muito grande e foi truncado. "
+                    "Baseie sua resposta na porção inicial do conteúdo fornecido e, se relevante, "
+                    "informe ao usuário que a análise foi feita em uma parte do material devido ao tamanho."
+                )
+                contexto_final_para_ia = contexto_limitado + aviso_ia
+                print(f"[DEBUG] Contexto do arquivo truncado de {len(contexto_arquivo)} para {LIMITE_CARACTERES} caracteres.")
+            else:
+                contexto_final_para_ia = contexto_arquivo
+
+            prompt_sistema += (
+                "\n\n--- CONTEXTO DE ARQUIVOS ---\n"
+                "Você deve basear sua resposta primariamente no conteúdo dos seguintes arquivos fornecidos pelo usuário:\n"
+                f"{contexto_final_para_ia}"
+                "\n--- FIM DO CONTEXTO DE ARQUIVOS ---"
+            )
+
+            # Adicione as preferências do usuário, se existirem
+            if preferencias:
+                nome_usuario = preferencias.get('nome', 'utilizador')
+                prompt_sistema += f"\n\nContexto sobre o utilizador ({nome_usuario.capitalize()}): {json.dumps(preferencias, ensure_ascii=False)}. Use essas informações para personalizar as suas respostas sempre que for relevante."
+                print("[DEBUG] Preferências encontradas e injetadas no prompt com contexto de arquivo.")
+
+        elif precisa_buscar_na_web(message):
+            # 2. Se não houver contexto de arquivo, continue com a lógica de busca na web.
+            print("[DEBUG] Decisão: Busca na web é necessária. A ignorar preferências do utilizador.")
             contexto_da_web = buscar_na_internet(message)
+            
             prompt_sistema = f"""
             Você é Jarvis, um assistente de IA que resume notícias da web.
             INSTRUÇÕES CRÍTICAS: Responda em português. Comece com uma introdução.
@@ -161,55 +205,23 @@ async def stream_chat_generator(message: str, history_json: str, token: str, con
             RESULTADOS DA PESQUISA:
             {contexto_da_web}
             """
-            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
         else:
-            print("[DEBUG] Decisão: Não é necessária busca na web. A processar com personalização.") # <<< DEBUG >>>
-            history = json.loads(history_json)
-            prompt_sistema = "Você é Jarvis, um assistente prestável e amigável."
-            
-            # <--- ADICIONADO: Lógica para injetar o contexto dos arquivos no prompt --->
-            # Em core_logic.py, dentro de stream_chat_generator
-            if context_id and context_id in file_contexts:
-                print(f"[DEBUG] Contexto de arquivo encontrado para o ID: {context_id}") # <<< DEBUG >>>
-                contexto_arquivo = file_contexts[context_id]
-                
-                # --- NOVA LÓGICA DE LIMITAÇÃO DE TOKENS ---
-                # Define um limite seguro de caracteres (aprox. 1 caractere = 0.25 tokens)
-                LIMITE_CARACTERES = 20000 * 4 # Limite seguro para ~20k tokens
-                
-                if len(contexto_arquivo) > LIMITE_CARACTERES:
-                    contexto_limitado = contexto_arquivo[:LIMITE_CARACTERES]
-                    aviso_usuario = (
-                        "\n\nAVISO PARA A IA: O conteúdo completo dos arquivos era muito grande e foi truncado. "
-                        "Baseie sua resposta na porção inicial do conteúdo fornecido e, se relevante, "
-                        "informe ao usuário que a análise foi feita em uma parte do material devido ao tamanho."
-                    )
-                    contexto_final_para_ia = contexto_limitado + aviso_usuario
-                    print(f"[DEBUG] Contexto do arquivo truncado de {len(contexto_arquivo)} para {LIMITE_CARACTERES} caracteres.")
-                else:
-                    contexto_final_para_ia = contexto_arquivo
-                
-                prompt_sistema += (
-                    "\n\n--- CONTEXTO DE ARQUIVOS ---\n"
-                    "Você deve basear sua resposta primariamente no conteúdo dos seguintes arquivos fornecidos pelo usuário:\n"
-                    f"{contexto_final_para_ia}"
-                    "\n--- FIM DO CONTEXTO DE ARQUIVOS ---"
-                )
-                
-            # <--- FIM DA ADIÇÃO --->
-
+            # 3. Se não houver contexto de arquivo ou busca na web, use apenas as preferências do usuário.
+            print("[DEBUG] Decisão: Não é necessária busca na web. A processar com personalização.")
             if preferencias:
-                print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.") # <<< DEBUG >>>
                 nome_usuario = preferencias.get('nome', 'utilizador')
                 prompt_sistema += f"\n\nContexto sobre o utilizador ({nome_usuario.capitalize()}): {json.dumps(preferencias, ensure_ascii=False)}. Use essas informações para personalizar as suas respostas sempre que for relevante."
+                print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.")
             else:
-                print("[DEBUG] Nenhuma preferência encontrada para este utilizador. A usar prompt padrão.") # <<< DEBUG >>>
-            
-            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
-            mensagens_para_api.extend(history)
-            mensagens_para_api.append({"role": "user", "content": message})
+                print("[DEBUG] Nenhuma preferência encontrada para este utilizador. A usar prompt padrão.")
 
-        print(f"[DEBUG] Prompt final do sistema enviado para a OpenAI:\n---\n{prompt_sistema}\n---") # <<< DEBUG >>>
+        # --- FIM DA LÓGICA DE DECISÃO ---
+
+        mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
+        mensagens_para_api.extend(history)
+        mensagens_para_api.append({"role": "user", "content": message})
+        
+        print(f"[DEBUG] Prompt final do sistema enviado para a OpenAI:\n---\n{prompt_sistema}\n---")
 
         stream = openai_client.chat.completions.create(
             model="gpt-4o", messages=mensagens_para_api, stream=True
@@ -221,5 +233,5 @@ async def stream_chat_generator(message: str, history_json: str, token: str, con
                 await asyncio.sleep(0.01)
                 
     except Exception as e:
-        print(f"[DEBUG CRÍTICO] Ocorreu uma exceção no stream_chat_generator: {e}") # <<< DEBUG >>>
+        print(f"[DEBUG CRÍTICO] Ocorreu uma exceção no stream_chat_generator: {e}")
         yield f"data: {json.dumps({'error': f'Ocorreu um erro no servidor: {e}'})}\n\n"
