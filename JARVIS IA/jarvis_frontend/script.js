@@ -80,6 +80,8 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
     function cleanTextForSpeech(text) {
         let cleanText = text.replace(/###|##|#|\*\*|\*|`/g, '');
         cleanText = cleanText.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+        // Adicione a linha abaixo para remover emojis
+        cleanText = cleanText.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|||[\u2011-\u26FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD10-\uDDFF])/g, '');
         return cleanText;
     }
 
@@ -166,24 +168,54 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
             url.searchParams.append('context_id', currentFileContextId);
         }
         
-        const eventSource = new EventSource(url);
-        
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.text) {
-                fullReply += data.text;
-                jarvisMessageElement.innerHTML = marked.parse(fullReply);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                let jarvisLanguage = 'pt-BR'; // Variável para armazenar o idioma da resposta
+
+        try {
+            const response = await fetch(url);
+            if (!response.body) {
+                throw new Error('Streaming not supported by the browser.');
             }
-        };
-        eventSource.onerror = () => {
-            eventSource.close();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.substring(6));
+                        // --- NOVA LÓGICA: ARMAZENA O IDIOMA DA RESPOSTA ---
+                        if (data.lang) {
+                            jarvisLanguage = data.lang;
+                        }
+                        if (data.text) {
+                            fullReply += data.text;
+                            jarvisMessageElement.innerHTML = marked.parse(fullReply);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    } else if (line.startsWith('event: end')) {
+                        reader.cancel();
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Erro na conexão com o servidor:", error);
+            jarvisMessageElement.innerHTML = `<span style="color:red;">Erro ao conectar. Tente novamente.</span>`;
+        } finally {
             currentChat.messages.push({ role: "assistant", content: fullReply });
             saveState();
             if (ttsToggle.checked && fullReply) {
-                speak(fullReply, "pt-BR");
+                // --- MUDANÇA FINAL: Chama a sua função 'speak' com o idioma correto ---
+                speak(fullReply, jarvisLanguage);
             }
-        };
+        }
     });
 
     function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }

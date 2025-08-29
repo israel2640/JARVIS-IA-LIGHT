@@ -140,11 +140,16 @@
         const pw = password.value.trim();
 
         // ATENÇÃO: Verifique se a porta (8000) está correta para o seu backend FastAPI
-        fetch('https://jarvis-ia-backend.onrender.com/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: em, password: pw })
-        })
+                  const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+          const BACKEND_URL = isLocal 
+              ? "http://127.0.0.1:8000" 
+              : "https://jarvis-ia-backend.onrender.com";
+
+          fetch(`${BACKEND_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: em, password: pw })
+          })
           .then(response => {
             if (!response.ok) {
               return response.json().then(err => { throw new Error(err.detail || 'E-mail ou senha inválidos.') });

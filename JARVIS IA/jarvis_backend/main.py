@@ -179,7 +179,15 @@ async def update_user(email: str, user_update: UserUpdate, admin_user: dict = De
     update_data = user_update.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhum dado fornecido para atualização.")
+    
+    # === ESTE É O BLOCO DE CÓDIGO CORRIGIDO ===
+    # A conversão da data deve ser feita antes de enviar para o Supabase
+    if 'data_expiracao' in update_data and update_data['data_expiracao'] is not None:
+        update_data['data_expiracao'] = update_data['data_expiracao'].isoformat()
+    # ==========================================
+
     response = supabase.table('usuarios').update(update_data).eq('email', email).execute()
+
     if not response.data:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     return {"message": f"Usuário {email} atualizado com sucesso."}
