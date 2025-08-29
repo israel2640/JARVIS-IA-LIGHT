@@ -21,7 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================================
     // === CONFIGURAÇÃO E ESTADO
     // ==========================================================
-    const BACKEND_URL = "http://127.0.0.1:8000";
+    const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+const BACKEND_URL = isLocal 
+    ? "http://127.0.0.1:8000" 
+    : "https://jarvis-ia-backend.onrender.com";
+
+// Opcional: Adiciona uma mensagem no console do navegador para você saber qual URL está em uso
+console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em: ${BACKEND_URL}`);
 
     const streamApiUrl = `${BACKEND_URL}/chat/stream`;
     const titleApiUrl = `${BACKEND_URL}/chat/generate-title`;
