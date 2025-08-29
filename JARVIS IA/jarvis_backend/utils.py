@@ -8,16 +8,79 @@ import pandas as pd
 import requests
 import base64
 import time
+import io # <--- ADICIONADO --->
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from openai import RateLimitError
-from config import openai_client # Importa o cliente já configurado
+from config import openai_client
+from fastapi import UploadFile # <--- ADICIONADO --->
 
 # NOTA: As funções de salvar/carregar no GitHub (carregar_dados_do_github, salvar_dados_no_github,
 # encrypt_file_content_general, decrypt_file_content_general, salvar_emocoes, carregar_emocoes)
 # devem ser movidas para cá do seu arquivo utils.py original.
 
-# --- Funções de Manipulação de Arquivos e Dados ---
+# <--- INÍCIO DA NOVA FUNÇÃO PARA UPLOAD DE MÚLTIPLOS ARQUIVOS --->
+async def extrair_texto_de_upload(file: UploadFile):
+    """
+    Extrai texto de uma vasta gama de tipos de arquivo, incluindo documentos,
+    código-fonte de várias linguagens e arquivos de dados.
+    Esta função é assíncrona para trabalhar com o FastAPI.
+    """
+    filename = file.filename.lower()
+    content = await file.read()
+    
+    # --- Arquivos de Documentos ---
+    if filename.endswith(".pdf"):
+        try:
+            with fitz.open(stream=content, filetype="pdf") as doc:
+                return "".join(page.get_text() for page in doc)
+        except Exception as e:
+            return f"Erro ao processar PDF: {e}"
+            
+    elif filename.endswith(".docx"):
+        try:
+            doc = docx.Document(io.BytesIO(content))
+            return "\n".join([p.text for p in doc.paragraphs])
+        except Exception as e:
+            return f"Erro ao processar .docx: {e}"
+
+    # --- Arquivos de Dados (convertidos para texto/CSV) ---
+    elif filename.endswith(".csv"):
+        # O próprio CSV já é texto, então apenas decodificamos
+        return content.decode("utf-8", errors="ignore")
+        
+    elif filename.endswith((".xlsx", ".xls")):
+        try:
+            df = pd.read_excel(io.BytesIO(content))
+            # Converte o DataFrame para uma string no formato CSV para a IA ler
+            return df.to_csv(index=False)
+        except Exception as e:
+            return f"Erro ao processar planilha Excel: {e}"
+
+    # --- Arquivos de Código, Scripts e Texto Simples ---
+    elif filename.endswith((
+        # Texto e Web
+        ".txt", ".md", ".html", ".css", ".js", ".ts", ".json", ".xml", ".yaml", ".yml",
+        # Python e R
+        ".py", ".r",
+        # C, C++, C#, Java, Kotlin, Swift, Go
+        ".c", ".cpp", ".h", ".cs", ".java", ".kt", ".swift", ".go",
+        # Scripts e Shell
+        ".sh", ".bat", ".ps1",
+        # PHP e Ruby
+        ".php", ".rb",
+        # SQL e outros
+        ".sql", ".pl", ".lua"
+    )):
+        # A maioria dos arquivos de código são baseados em texto e podem ser lidos diretamente
+        return content.decode("utf-8", errors="ignore")
+        
+    else:
+        return f"Formato de arquivo '{filename.split('.')[-1]}' não suportado para extração de texto."
+# <--- FIM DA NOVA FUNÇÃO --->
+
+
+# --- Funções de Manipulação de Arquivos e Dados (Suas funções existentes) ---
 
 def carregar_memoria():
     try:

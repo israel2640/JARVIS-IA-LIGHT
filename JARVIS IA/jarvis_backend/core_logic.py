@@ -6,6 +6,7 @@ import requests
 
 # Módulos e conexões do projeto
 from config import openai_client, supabase, SERPER_API_KEY, SECRET_KEY, ALGORITHM
+from context_cache import file_contexts
 
 # ==========================================================
 # === FUNÇÕES DE LÓGICA DO PROJETO
@@ -56,21 +57,52 @@ def adicionar_ou_atualizar_preferencia_manual(email_usuario: str, topico: str, v
     except Exception as e:
         return (False, f"Erro inesperado ao guardar preferência: {e}")
 
+
 def precisa_buscar_na_web(pergunta: str):
-    """Usa a IA para determinar se uma pergunta requer uma busca na web."""
+    """Usa a IA para determinar se uma pergunta requer uma busca na web,
+    com uma verificação prioritária para uma lista expandida de palavras-chave."""
+    
+    pergunta_lower = pergunta.lower()
+    
+    # --- LISTA DE PALAVRAS-CHAVE EXPANDIDA ---
+    palavras_chave_busca = [
+        # Tempo e Data
+        "hora", "horas", "horário", "que horas são", "data de hoje",
+        # Notícias
+        "notícia", "notícias", "últimas sobre", "manchetes de hoje", "resumo de notícias",
+        # Clima
+        "previsão do tempo", "temperatura em", "clima em", "vai chover",
+        # Esportes
+        "resultado do jogo", "placar do jogo", "quem ganhou", "próxima partida",
+        # Finanças
+        "cotação do dólar", "preço das ações", "valor do euro", "bolsa de valores"
+    ]
+
+    # Verifica se alguma das palavras-chave está na pergunta
+    triggered_keyword = next((palavra for palavra in palavras_chave_busca if palavra in pergunta_lower), None)
+    if triggered_keyword:
+        print(f"[DEBUG Web Search] Palavra-chave '{triggered_keyword}' detectada. Forçando busca na web.")
+        return True
+    # --- FIM DA VERIFICAÇÃO POR PALAVRAS-CHAVE ---
+
+    # Se não for uma pergunta com palavra-chave, continua com a verificação da IA como um fallback
     try:
         prompt = f"""
-        Analise a pergunta do utilizador. A resposta exige conhecimento sobre eventos ou informações muito recentes (ocorridos hoje ou nos últimos dias)?
-        Perguntas sobre notícias, resultados desportivos, cotações de moedas, previsão do tempo ou eventos atuais exigem uma busca na web.
-        Responda APENAS com 'SIM' ou 'NÃO'.
+        A pergunta a seguir precisa de informações da internet em tempo real (eventos atuais, política, etc)?
+        Responda apenas com uma única palavra: SIM ou NAO.
+
         Pergunta: "{pergunta}"
         """
         response = openai_client.chat.completions.create(
             model='gpt-4o-mini', messages=[{"role": "user", "content": prompt}], max_tokens=3, temperature=0
         )
         decisao = response.choices[0].message.content.strip().upper()
+        
+        print(f"[DEBUG Web Search] Decisão da IA para buscar na web: '{decisao}'")
+        
         return "SIM" in decisao
-    except Exception:
+    except Exception as e:
+        print(f"[ERRO Web Search] Falha ao decidir sobre a busca na web: {e}")
         return False
 
 def buscar_na_internet(query: str):
@@ -86,12 +118,8 @@ def buscar_na_internet(query: str):
         contexto = ""
         if "organic" in results:
             for item in results["organic"][:5]:
-                # --- CORREÇÃO APLICADA AQUI ---
-                # Pega o snippet e limpa o '\n' antes da f-string
                 snippet = item.get('snippet', 'N/A')
                 snippet_limpo = snippet.replace('\n', ' ')
-                
-                # Usa a variável já limpa na f-string
                 contexto += f"* [{item.get('title', 'N/A')}]({item.get('link', '#')}) - {snippet_limpo}\n"
         return contexto if contexto else "Nenhum resultado relevante encontrado."
     except Exception as e:
@@ -110,21 +138,19 @@ def gerar_titulo_conversa(historico: list):
     except Exception:
         return "Chat"
 
-async def stream_chat_generator(message: str, history_json: str, token: str):
+# <--- MODIFICADO: A função agora aceita 'context_id' --->
+async def stream_chat_generator(message: str, history_json: str, token: str, context_id: str = None):
     """
-    Função geradora final que busca preferências e gera a resposta da IA.
+    Função geradora final que busca preferências, contexto de arquivos e gera a resposta da IA.
     """
     print("\n--- INICIANDO NOVO PEDIDO DE CHAT ---") # <<< DEBUG >>>
     try:
-        # Etapa 1: Autenticação
         user_email = get_user_email_from_token(token)
         print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}") # <<< DEBUG >>>
 
-        # Etapa 2: Carregar Preferências
         preferencias = carregar_preferencias_do_usuario(user_email)
         print(f"[DEBUG] Preferências carregadas para o utilizador: {preferencias}") # <<< DEBUG >>>
 
-        # Etapa 3: Decidir o Caminho (Busca na Web ou Chat Normal)
         if precisa_buscar_na_web(message):
             print("[DEBUG] Decisão: Busca na web é necessária. A ignorar preferências do utilizador.") # <<< DEBUG >>>
             contexto_da_web = buscar_na_internet(message)
@@ -141,7 +167,37 @@ async def stream_chat_generator(message: str, history_json: str, token: str):
             history = json.loads(history_json)
             prompt_sistema = "Você é Jarvis, um assistente prestável e amigável."
             
-            # Etapa 4: Injetar Preferências no Prompt
+            # <--- ADICIONADO: Lógica para injetar o contexto dos arquivos no prompt --->
+            # Em core_logic.py, dentro de stream_chat_generator
+            if context_id and context_id in file_contexts:
+                print(f"[DEBUG] Contexto de arquivo encontrado para o ID: {context_id}") # <<< DEBUG >>>
+                contexto_arquivo = file_contexts[context_id]
+                
+                # --- NOVA LÓGICA DE LIMITAÇÃO DE TOKENS ---
+                # Define um limite seguro de caracteres (aprox. 1 caractere = 0.25 tokens)
+                LIMITE_CARACTERES = 20000 * 4 # Limite seguro para ~20k tokens
+                
+                if len(contexto_arquivo) > LIMITE_CARACTERES:
+                    contexto_limitado = contexto_arquivo[:LIMITE_CARACTERES]
+                    aviso_usuario = (
+                        "\n\nAVISO PARA A IA: O conteúdo completo dos arquivos era muito grande e foi truncado. "
+                        "Baseie sua resposta na porção inicial do conteúdo fornecido e, se relevante, "
+                        "informe ao usuário que a análise foi feita em uma parte do material devido ao tamanho."
+                    )
+                    contexto_final_para_ia = contexto_limitado + aviso_usuario
+                    print(f"[DEBUG] Contexto do arquivo truncado de {len(contexto_arquivo)} para {LIMITE_CARACTERES} caracteres.")
+                else:
+                    contexto_final_para_ia = contexto_arquivo
+                
+                prompt_sistema += (
+                    "\n\n--- CONTEXTO DE ARQUIVOS ---\n"
+                    "Você deve basear sua resposta primariamente no conteúdo dos seguintes arquivos fornecidos pelo usuário:\n"
+                    f"{contexto_final_para_ia}"
+                    "\n--- FIM DO CONTEXTO DE ARQUIVOS ---"
+                )
+                
+            # <--- FIM DA ADIÇÃO --->
+
             if preferencias:
                 print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.") # <<< DEBUG >>>
                 nome_usuario = preferencias.get('nome', 'utilizador')

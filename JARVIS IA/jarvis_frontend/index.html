@@ -66,11 +66,17 @@
             <div class="chat-messages" id="chat-messages">
             </div>
             <form class="chat-input-form" id="chat-form">
+                <button type="button" class="icon-button" id="attach-btn" title="Anexar Arquivos">
+                    <i class="ph ph-paperclip"></i>
+                </button>
+                <input type="file" id="file-input" multiple hidden>
+
                 <input type="text" id="message-input" placeholder="Converse com Jarvis..." autocomplete="off" required>
-                <button type="submit" class="icon-button">
+                <button type="submit" class="icon-button" title="Enviar Mensagem">
                     <i class="ph ph-paper-plane-right"></i>
                 </button>
             </form>
+            <div id="file-context-area" class="file-context-area"></div>
         </main>
     </div>
 

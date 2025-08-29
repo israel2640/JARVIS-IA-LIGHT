@@ -13,26 +13,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const themeToggle = document.getElementById("theme-toggle");
     const ttsToggle = document.getElementById("tts-toggle");
     const logoutBtn = document.getElementById("logout-btn");
+    // <--- ADICIONADO: Seletores para a nova funcionalidade --->
+    const attachBtn = document.getElementById("attach-btn");
+    const fileInput = document.getElementById("file-input");
+    const fileContextArea = document.getElementById("file-context-area");
+    
     // ==========================================================
     // === CONFIGURAÇÃO E ESTADO
     // ==========================================================
-    const BACKEND_URL = "https://jarvis-ia-backend.onrender.com"; 
+    const BACKEND_URL = "http://127.0.0.1:8000";
 
     const streamApiUrl = `${BACKEND_URL}/chat/stream`;
     const titleApiUrl = `${BACKEND_URL}/chat/generate-title`;
     const codeGenApiUrl = `${BACKEND_URL}/code/generate-web-page`;
     let state = { chats: {}, currentChatId: null };
+    // <--- ADICIONADO: Variável para guardar o ID do contexto dos arquivos --->
+    let currentFileContextId = null;
     
     // ==========================================================
-    // === [NOVO] LÓGICA DE AUTENTICAÇÃO E CONTROLE DE ACESSO
+    // === LÓGICA DE AUTENTICAÇÃO E CONTROLE DE ACESSO
     // ==========================================================
     const token = localStorage.getItem('jwtToken');
     if (!token) {
-        window.location.href = 'login.html'; // Redireciona se não estiver logado
-        return; // Para a execução do script para evitar erros
+        window.location.href = 'login.html';
+        return;
     }
 
-    // Função para decodificar o payload do JWT (não verifica a assinatura)
     function decodeJwtPayload(token) {
         try {
             const base64Url = token.split('.')[1];
@@ -40,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return JSON.parse(atob(base64));
         } catch (e) {
             console.error("Erro ao decodificar o token:", e);
-            localStorage.removeItem('jwtToken'); // Limpa token inválido
+            localStorage.removeItem('jwtToken');
             window.location.href = 'login.html';
             return null;
         }
@@ -121,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function switchChat(chatId) { if (state.currentChatId === chatId) return; state.currentChatId = chatId; saveState(); render(); }
     function deleteChat(chatId) { if (confirm(`Tem certeza que deseja apagar o chat "${state.chats[chatId].title}"?`)) { delete state.chats[chatId]; if (state.currentChatId === chatId) { const remainingChats = Object.values(state.chats).sort((a, b) => b.createdAt - a.createdAt); state.currentChatId = remainingChats.length > 0 ? remainingChats[0].id : null; } if (!state.currentChatId) { createNewChat(); } else { saveState(); render(); } } }
     function editChatTitle(chatId) { const newTitle = prompt("Digite o novo título do chat:", state.chats[chatId].title); if (newTitle && newTitle.trim() !== "") { state.chats[chatId].title = newTitle.trim(); saveState(); render(); } }
-    async function generateAndSetTitle(chatId) { const chat = state.chats[chatId]; if (chat.title === "Novo Chat" && chat.messages.length === 2) { try { 
+    async function generateAndSetTitle(chatId) { const chat = state.chats[chatId]; if (chat.title === "Novo Chat" && chat.messages.length >= 2) { try { 
         const response = await fetch(titleApiUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ history: chat.messages }) }); 
         const data = await response.json(); if (data.title) { chat.title = data.title; saveState(); renderSidebar(); } } catch (error) { console.error("Falha ao gerar título:", error); } } }
     
@@ -137,61 +143,54 @@ document.addEventListener("DOMContentLoaded", () => {
         currentChat.messages.push({ role: "user", content: userMessage });
         addMessageToUI("user", userMessage);
         messageInput.value = "";
-        const isCodeRequest = userMessage.toLowerCase().includes("crie uma página") || userMessage.toLowerCase().includes("código html");
-        if (isCodeRequest) {
-             const jarvisMessageElement = addMessageToUI("assistant", "Gerando o código para você, um momento...");
-            try {
-                const response = await fetch(codeGenApiUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ prompt: userMessage }) });
-                const data = await response.json();
-                jarvisMessageElement.innerHTML = marked.parse(data.structured_content);
-                const fullReply = data.structured_content;
-                currentChat.messages.push({ role: "assistant", content: fullReply });
-                saveState();
-                if (ttsToggle.checked && fullReply) { speak("Código gerado. Aqui estão os detalhes.", "pt-BR"); }
-            } catch (error) {
-                console.error("Erro ao gerar código:", error);
-                jarvisMessageElement.textContent = "Desculpe, ocorreu um erro ao gerar o código.";
-            }
-        } else {
-            generateAndSetTitle(state.currentChatId);
-            const jarvisMessageElement = addMessageToUI("assistant");
-            let fullReply = "";
-            let responseLang = "pt-BR";
-            const url = new URL(streamApiUrl);
-            url.searchParams.append('message', userMessage);
-            url.searchParams.append('history', JSON.stringify(currentChat.messages));            
-            url.searchParams.append('token', token);
-            const eventSource = new EventSource(url);
-            eventSource.addEventListener('metadata', (event) => {
-                const data = JSON.parse(event.data);
-                if (data.lang) { responseLang = data.lang; }
-            });
-            eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.text) {
-                    fullReply += data.text;
-                    jarvisMessageElement.innerHTML = marked.parse(fullReply);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            };
-            eventSource.onerror = () => {
-                eventSource.close();
-                currentChat.messages.push({ role: "assistant", content: fullReply });
-                saveState();
-                if (ttsToggle.checked && fullReply) {
-                    speak(fullReply, responseLang);
-                }
-            };
+        
+        // A lógica de isCodeRequest pode ser removida se você preferir que a IA decida tudo
+        generateAndSetTitle(state.currentChatId);
+        const jarvisMessageElement = addMessageToUI("assistant");
+        let fullReply = "";
+        
+        const url = new URL(streamApiUrl);
+        url.searchParams.append('message', userMessage);
+        url.searchParams.append('history', JSON.stringify(currentChat.messages.slice(0, -1))); // Envia histórico sem a última pergunta do user        
+        url.searchParams.append('token', token);
+        // <--- MODIFICADO: Inclui o ID de contexto dos arquivos, se existir --->
+        if (currentFileContextId) {
+            url.searchParams.append('context_id', currentFileContextId);
         }
+        
+        const eventSource = new EventSource(url);
+        
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.text) {
+                fullReply += data.text;
+                jarvisMessageElement.innerHTML = marked.parse(fullReply);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        };
+        eventSource.onerror = () => {
+            eventSource.close();
+            currentChat.messages.push({ role: "assistant", content: fullReply });
+            saveState();
+            if (ttsToggle.checked && fullReply) {
+                speak(fullReply, "pt-BR");
+            }
+        };
     });
 
     function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }
     
-    newChatBtn.addEventListener("click", createNewChat);
+    // <--- MODIFICADO: A função do newChatBtn agora limpa o contexto dos arquivos --->
+    newChatBtn.addEventListener("click", () => {
+        currentFileContextId = null;
+        fileContextArea.innerHTML = '';
+        createNewChat();
+    });
+
     sidebarToggleOpen.addEventListener("click", (event) => { 
-    event.stopPropagation(); // Impede que o clique "vaze" para o fundo
-    sidebar.classList.toggle("collapsed"); 
-});
+        event.stopPropagation();
+        sidebar.classList.toggle("collapsed"); 
+    });
     
     const chatContainer = document.querySelector(".chat-container");
     chatContainer.addEventListener("click", () => {
@@ -200,10 +199,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // <--- ADICIONADO: Lógica completa para upload de arquivos --->
+    attachBtn.addEventListener("click", () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async () => {
+        if (fileInput.files.length === 0) {
+            return;
+        }
+
+        const formData = new FormData();
+        for (const file of fileInput.files) {
+            formData.append("files", file);
+        }
+
+        fileContextArea.innerHTML = `<span class="file-tag">Enviando e processando...</span>`;
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/chat/upload-files`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error("Falha ao enviar arquivos.");
+            }
+
+            const result = await response.json();
+            currentFileContextId = result.context_id;
+
+            fileContextArea.innerHTML = '<span>Arquivos em contexto:</span>';
+            result.filenames.forEach(name => {
+                const tag = document.createElement('div');
+                tag.className = 'file-tag';
+                tag.innerHTML = `<span>${name}</span>`;
+                fileContextArea.appendChild(tag);
+            });
+            // Adiciona uma mensagem de confirmação ao chat
+            addMessageToUI("assistant", `Arquivos [${result.filenames.join(', ')}] carregados com sucesso. Agora você pode fazer perguntas sobre eles.`);
+
+        } catch (error) {
+            console.error("Erro no upload:", error);
+            fileContextArea.innerHTML = `<span style="color: red;">Erro ao carregar arquivos.</span>`;
+        } finally {
+            fileInput.value = ''; // Limpa o input para permitir o reenvio dos mesmos arquivos
+        }
+    });
+    // <--- FIM DA ADIÇÃO --->
+
     themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
     ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
 
-    // --- [NOVO] LÓGICA DE LOGOUT ---
+    // --- LÓGICA DE LOGOUT ---
     logoutBtn.addEventListener('click', () => {
         if (confirm("Tem certeza que deseja sair?")) {
             localStorage.removeItem('jwtToken');

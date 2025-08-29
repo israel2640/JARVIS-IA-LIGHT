@@ -205,3 +205,32 @@ input:checked + .slider:before { transform: translateX(20px); }
         z-index: 999;
     }
 }
+
+
+
+
+/* Adicione ao final de style.css */
+.file-context-area {
+    padding: 0 1rem;
+    font-size: 0.8rem;
+    color: var(--icon-color);
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.file-tag {
+    background-color: var(--input-bg);
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.file-tag .remove-file-btn {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    line-height: 1;
+}

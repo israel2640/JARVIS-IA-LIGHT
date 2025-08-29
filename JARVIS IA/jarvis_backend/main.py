@@ -4,19 +4,24 @@ import uvicorn
 import json
 import asyncio
 import os
+# <--- ADICIONADO: Importações para upload de arquivos --->
+from fastapi import UploadFile, File
+import uuid
+import utils
+from context_cache import file_contexts
+# <--- FIM DA ADIÇÃO --->
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from dotenv import load_dotenv
+from typing import Optional, List # <--- MODIFICADO: Adicionado 'List' --->
 
 # Segurança e Autenticação
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-
+from dotenv import load_dotenv
 # Módulos do projeto e conexões
 from supabase import create_client, Client
 from config import openai_client, supabase, SECRET_KEY, ALGORITHM
@@ -24,6 +29,11 @@ import core_logic
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
+
+# <--- ADICIONADO: Dicionário para guardar o contexto dos arquivos temporariamente --->
+
+# <--- FIM DA ADIÇÃO --->
+
 
 # ==========================================================
 # === CONFIGURAÇÃO DE SEGURANÇA
@@ -218,12 +228,36 @@ async def delete_user_preference(pref_id: int, user_email: str = Depends(get_cur
 # ==========================================================
 # === ENDPOINTS PRINCIPAIS DA APLICAÇÃO (IA)
 # ==========================================================
+
+# <--- ADICIONADO: Novo endpoint para upload de arquivos --->
+@app.post("/chat/upload-files")
+async def handle_file_upload(files: List[UploadFile] = File(...)):
+    conteudo_agregado = []
+    nomes_arquivos = []
+
+    for file in files:
+        nomes_arquivos.append(file.filename)
+        texto_extraido = await utils.extrair_texto_de_upload(file)
+        conteudo_agregado.append(
+            f"--- INÍCIO DO ARQUIVO: {file.filename} ---\n\n{texto_extraido}\n\n--- FIM DO ARQUIVO: {file.filename} ---"
+        )
+    
+    contexto_final = "\n\n".join(conteudo_agregado)
+    context_id = str(uuid.uuid4())
+    file_contexts[context_id] = contexto_final # Armazena em memória
+
+    return {"context_id": context_id, "filenames": nomes_arquivos}
+# <--- FIM DA ADIÇÃO --->
+
+
+# <--- MODIFICADO: Adicionado 'context_id' para receber o contexto dos arquivos --->
 @app.get("/chat/stream")
-async def handle_chat_stream(message: str, history: str, token: str):
+async def handle_chat_stream(message: str, history: str, token: str, context_id: Optional[str] = None):
     return StreamingResponse(
-        core_logic.stream_chat_generator(message, history, token),
+        core_logic.stream_chat_generator(message, history, token, context_id),
         media_type="text/event-stream"
     )
+# <--- FIM DA MODIFICAÇÃO --->
 
 @app.post("/chat/generate-title", response_model=TitleGenerationOutput)
 async def handle_generate_title(payload: TitleGenerationInput):
