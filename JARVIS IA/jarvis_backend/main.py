@@ -84,21 +84,22 @@ app = FastAPI(title="Jarvis IA Backend")
 
 origins = [
     # URLs para desenvolvimento local
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     
-    # URL do seu frontend em produção no Render
+    # URL exata do seu frontend em produção no Render
     "https://jarvis-ia-frontend.onrender.com", 
     
-    # Se você tiver um domínio final ou outro subdomínio
-    "https://jarvis-ia.onrender.com" 
+    # Padrão curinga para permitir qualquer subdomínio do seu serviço no Render
+    # Isso cobre casos como "preview-deploy-123.jarvis-ia-backend.onrender.com"
+    "*.onrender.com" 
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    # Você também pode usar allow_origin_regex para mais flexibilidade
+    # allow_origin_regex="https?://.*\.onrender\.com", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
