@@ -28,7 +28,7 @@ const BACKEND_URL = isLocal
     ? "http://127.0.0.1:8000" 
     : "https://jarvis-ia-backend.onrender.com";
 
-// Opcional: Adiciona uma mensagem no console do navegador para você saber qual URL está em uso
+// Adiciona uma mensagem no console do navegador para saber qual URL está em uso
 console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em: ${BACKEND_URL}`);
 
     const streamApiUrl = `${BACKEND_URL}/chat/stream`;
@@ -80,7 +80,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
     function cleanTextForSpeech(text) {
         let cleanText = text.replace(/###|##|#|\*\*|\*|`/g, '');
         cleanText = cleanText.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
-        // Adicione a linha abaixo para remover emojis
+        
         cleanText = cleanText.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|||[\u2011-\u26FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD10-\uDDFF])/g, '');
         return cleanText;
     }
@@ -153,17 +153,16 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
         currentChat.messages.push({ role: "user", content: userMessage });
         addMessageToUI("user", userMessage);
         messageInput.value = "";
-        
-        // A lógica de isCodeRequest pode ser removida se você preferir que a IA decida tudo
+                
         generateAndSetTitle(state.currentChatId);
         const jarvisMessageElement = addMessageToUI("assistant");
         let fullReply = "";
         
         const url = new URL(streamApiUrl);
         url.searchParams.append('message', userMessage);
-        url.searchParams.append('history', JSON.stringify(currentChat.messages.slice(0, -1))); // Envia histórico sem a última pergunta do user        
+        url.searchParams.append('history', JSON.stringify(currentChat.messages.slice(0, -1))); //      
         url.searchParams.append('token', token);
-        // <--- MODIFICADO: Inclui o ID de contexto dos arquivos, se existir --->
+        
         if (currentFileContextId) {
             url.searchParams.append('context_id', currentFileContextId);
         }
@@ -191,7 +190,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const data = JSON.parse(line.substring(6));
-                        // --- NOVA LÓGICA: ARMAZENA O IDIOMA DA RESPOSTA ---
+                        // --- ARMAZENA O IDIOMA DA RESPOSTA ---
                         if (data.lang) {
                             jarvisLanguage = data.lang;
                         }
@@ -212,7 +211,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
             currentChat.messages.push({ role: "assistant", content: fullReply });
             saveState();
             if (ttsToggle.checked && fullReply) {
-                // --- MUDANÇA FINAL: Chama a sua função 'speak' com o idioma correto ---
+                // --- Chama a sua função 'speak' com o idioma correto ---
                 speak(fullReply, jarvisLanguage);
             }
         }
@@ -220,7 +219,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
 
     function addSidebarEventListeners() { document.querySelectorAll(".chat-history-item").forEach((item) => { const chatId = item.dataset.chatId; item.querySelector(".history-item-title").addEventListener("click", () => switchChat(chatId)); item.querySelector(".edit-btn").addEventListener("click", (e) => { e.stopPropagation(); editChatTitle(chatId); }); item.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteChat(chatId); }); }); }
     
-    // <--- MODIFICADO: A função do newChatBtn agora limpa o contexto dos arquivos --->
+    // <--- A função do newChatBtn limpa o contexto dos arquivos --->
     newChatBtn.addEventListener("click", () => {
         currentFileContextId = null;
         fileContextArea.innerHTML = '';
@@ -239,7 +238,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
         }
     });
 
-    // <--- ADICIONADO: Lógica completa para upload de arquivos --->
+    // <--- Lógica para upload de arquivos --->
     attachBtn.addEventListener("click", () => {
         fileInput.click();
     });
@@ -277,7 +276,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
                 tag.innerHTML = `<span>${name}</span>`;
                 fileContextArea.appendChild(tag);
             });
-            // Adiciona uma mensagem de confirmação ao chat
+            // Adiciona mensagem de confirmação ao chat
             addMessageToUI("assistant", `Arquivos [${result.filenames.join(', ')}] carregados com sucesso. Agora você pode fazer perguntas sobre eles.`);
 
         } catch (error) {
@@ -287,12 +286,11 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
             fileInput.value = ''; // Limpa o input para permitir o reenvio dos mesmos arquivos
         }
     });
-    // <--- FIM DA ADIÇÃO --->
-
+    
     themeToggle.addEventListener("change", () => { document.body.classList.toggle("dark-theme"); localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light"); });
     ttsToggle.addEventListener('change', () => { if (!ttsToggle.checked) { speechSynthesis.cancel(); } });
 
-    // --- LÓGICA DE FALA PARA TEXTO ADICIONADA AQUI ---
+    // --- LÓGICA DE FALA PARA TEXTO ---
     if ('webkitSpeechRecognition' in window) {
         const SpeechRecognition = window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
@@ -333,7 +331,6 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
         console.warn('Web Speech API não suportada no seu navegador.');
         micBtn.style.display = 'none'; // Esconde o botão se a API não for suportada
     }
-    // --- FIM DA LÓGICA ADICIONADA ---
 
     // --- LÓGICA DE LOGOUT ---
     logoutBtn.addEventListener('click', () => {

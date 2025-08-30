@@ -138,8 +138,7 @@
         loginStatus.textContent = 'Autenticando...';
         const em = email.value.trim();
         const pw = password.value.trim();
-
-        // ATENÇÃO: Verifique se a porta (8000) está correta para o seu backend FastAPI
+        
                   const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
           const BACKEND_URL = isLocal 
               ? "http://127.0.0.1:8000" 
@@ -165,8 +164,7 @@
             } else {
               localStorage.removeItem('rememberedEmail');
             }
-
-            // ATENÇÃO: Verifique se o nome do seu arquivo principal é 'index.html'
+            
             setTimeout(() => {
               window.location.href = 'index.html';
             }, 800);
