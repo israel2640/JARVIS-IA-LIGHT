@@ -83,10 +83,7 @@ origins = [
     "http://127.0.0.1:5500",
     
     # URL exata do seu frontend em produção no Render
-    "https://jarvis-ia-frontend.onrender.com", 
-    
-    # Padrão curinga para permitir qualquer subdomínio do serviço no Render    
-    "*.onrender.com" 
+    "https://jarvis-ia-frontend.onrender.com"
 ]
 
 app.add_middleware(
