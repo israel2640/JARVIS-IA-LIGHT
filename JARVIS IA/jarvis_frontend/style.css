@@ -176,6 +176,10 @@ input:checked + .slider:before { transform: translateX(20px); }
         margin-left: 0;
     }
 
+    #message-input {
+    min-width: 0; /* Permite que o campo de texto encolha o necessário */
+    }
+
     .sidebar.collapsed {
         margin-left: -260px;
     }
@@ -200,9 +204,15 @@ input:checked + .slider:before { transform: translateX(20px); }
         bottom: 0;
         left: 0;
         right: 0;
-        width: 100%; /* Garante que ocupe toda a largura */
+        width: 100%; 
         background-color: var(--background-color);
         z-index: 999;
+
+        /* --- CORREÇÃO CIRÚRGICA AQUI --- */
+        display: flex;
+        align-items: center; /* Alinha tudo verticalmente */
+        padding: 0.5rem;      /* Espaçamento nas bordas do formulário */
+        gap: 0.5rem;          /* Espaçamento entre os ícones e o input */
     }
 }
 
