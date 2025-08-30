@@ -195,7 +195,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     /* --- CORREÇÃO ADICIONADA AQUI --- */
     .chat-messages {
         /* Adiciona um espaçamento no final da lista de mensagens */
-        padding-bottom: 130px; 
+        padding-bottom: 160px; 
     }
 
     .chat-input-form {
