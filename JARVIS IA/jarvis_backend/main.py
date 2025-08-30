@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List # <--- MODIFICADO: Adicionado 'List' --->
+from typing import Optional, List 
 
 # Segurança e Autenticação
 from passlib.context import CryptContext
@@ -29,11 +29,6 @@ import core_logic
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
-
-# <--- ADICIONADO: Dicionário para guardar o contexto dos arquivos temporariamente --->
-
-# <--- FIM DA ADIÇÃO --->
-
 
 # ==========================================================
 # === CONFIGURAÇÃO DE SEGURANÇA
@@ -90,16 +85,13 @@ origins = [
     # URL exata do seu frontend em produção no Render
     "https://jarvis-ia-frontend.onrender.com", 
     
-    # Padrão curinga para permitir qualquer subdomínio do seu serviço no Render
-    # Isso cobre casos como "preview-deploy-123.jarvis-ia-backend.onrender.com"
+    # Padrão curinga para permitir qualquer subdomínio do serviço no Render    
     "*.onrender.com" 
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    # Você também pode usar allow_origin_regex para mais flexibilidade
-    # allow_origin_regex="https?://.*\.onrender\.com", 
+    allow_origins=origins,        
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -186,9 +178,8 @@ async def update_user(email: str, user_update: UserUpdate, admin_user: dict = De
     update_data = user_update.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhum dado fornecido para atualização.")
-    
-    # === ESTE É O BLOCO DE CÓDIGO CORRIGIDO ===
-    # A conversão da data deve ser feita antes de enviar para o Supabase
+        
+    # A conversão da data antes de enviar para o Supabase
     if 'data_expiracao' in update_data and update_data['data_expiracao'] is not None:
         update_data['data_expiracao'] = update_data['data_expiracao'].isoformat()
     # ==========================================
@@ -201,10 +192,10 @@ async def update_user(email: str, user_update: UserUpdate, admin_user: dict = De
 
 @app.delete("/api/admin/users/{email}")
 async def delete_user(email: str, admin_user: dict = Depends(get_current_admin_user)):
-    # PASSO 1: Excluir as preferências associadas ao e-mail
+    
     supabase.table('preferencias').delete().eq('user_email', email).execute()
 
-    # PASSO 2: Excluir o próprio usuário da tabela de usuários
+    
     response = supabase.table('usuarios').delete().eq('email', email).execute()
     
     if not response.data:
@@ -246,7 +237,7 @@ async def delete_user_preference(pref_id: int, user_email: str = Depends(get_cur
 # === ENDPOINTS PRINCIPAIS DA APLICAÇÃO (IA)
 # ==========================================================
 
-# <--- ADICIONADO: Novo endpoint para upload de arquivos --->
+# <--- Novo endpoint para upload de arquivos --->
 @app.post("/chat/upload-files")
 async def handle_file_upload(files: List[UploadFile] = File(...)):
     conteudo_agregado = []
@@ -264,17 +255,13 @@ async def handle_file_upload(files: List[UploadFile] = File(...)):
     file_contexts[context_id] = contexto_final # Armazena em memória
 
     return {"context_id": context_id, "filenames": nomes_arquivos}
-# <--- FIM DA ADIÇÃO --->
 
-
-# <--- MODIFICADO: Adicionado 'context_id' para receber o contexto dos arquivos --->
 @app.get("/chat/stream")
 async def handle_chat_stream(message: str, history: str, token: str, context_id: Optional[str] = None):
     return StreamingResponse(
         core_logic.stream_chat_generator(message, history, token, context_id),
         media_type="text/event-stream"
     )
-# <--- FIM DA MODIFICAÇÃO --->
 
 @app.post("/chat/generate-title", response_model=TitleGenerationOutput)
 async def handle_generate_title(payload: TitleGenerationInput):

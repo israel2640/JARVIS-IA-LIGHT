@@ -8,18 +8,14 @@ import pandas as pd
 import requests
 import base64
 import time
-import io # <--- ADICIONADO --->
+import io 
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from openai import RateLimitError
 from config import openai_client
-from fastapi import UploadFile # <--- ADICIONADO --->
+from fastapi import UploadFile 
 
-# NOTA: As funções de salvar/carregar no GitHub (carregar_dados_do_github, salvar_dados_no_github,
-# encrypt_file_content_general, decrypt_file_content_general, salvar_emocoes, carregar_emocoes)
-# devem ser movidas para cá do seu arquivo utils.py original.
-
-# <--- INÍCIO DA NOVA FUNÇÃO PARA UPLOAD DE MÚLTIPLOS ARQUIVOS --->
+# <--- UPLOAD DE MÚLTIPLOS ARQUIVOS --->
 async def extrair_texto_de_upload(file: UploadFile):
     """
     Extrai texto de uma vasta gama de tipos de arquivo, incluindo documentos,
@@ -77,10 +73,7 @@ async def extrair_texto_de_upload(file: UploadFile):
         
     else:
         return f"Formato de arquivo '{filename.split('.')[-1]}' não suportado para extração de texto."
-# <--- FIM DA NOVA FUNÇÃO --->
 
-
-# --- Funções de Manipulação de Arquivos e Dados (Suas funções existentes) ---
 
 def carregar_memoria():
     try:
@@ -94,14 +87,14 @@ def salvar_memoria(memoria):
         json.dump(memoria, f, ensure_ascii=False, indent=4)
 
 def extrair_texto_documento(uploaded_file_bytes, filename):
-    # Esta função agora recebe os bytes do arquivo e o nome do arquivo
+    
     if filename.endswith(".pdf"):
         texto = ""
         with fitz.open(stream=uploaded_file_bytes, filetype="pdf") as doc:
             for page in doc:
                 texto += page.get_text()
         return texto
-    # Adicione aqui as outras lógicas para .docx, .txt, etc., adaptando para receber bytes.
+    
     return "Formato de arquivo não suportado."
 
 # --- Funções de Geração (PDF, etc.) ---

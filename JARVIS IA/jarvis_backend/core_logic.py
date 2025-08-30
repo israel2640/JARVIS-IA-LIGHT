@@ -9,10 +9,6 @@ from typing import Optional
 from config import openai_client, supabase, SERPER_API_KEY, SECRET_KEY, ALGORITHM
 from context_cache import file_contexts
 
-# ==========================================================
-# === FUNÇÕES DE LÓGICA DO PROJETO
-# ==========================================================
-
 # core_logic.py
 import json
 import asyncio
@@ -99,9 +95,7 @@ def precisa_buscar_na_web(pergunta: str):
     if triggered_keyword:
         print(f"[DEBUG Web Search] Palavra-chave '{triggered_keyword}' detectada. Forçando busca na web.")
         return True
-    # --- FIM DA VERIFICAÇÃO POR PALAVRAS-CHAVE ---
-
-    # Se não for uma pergunta com palavra-chave, continua com a verificação da IA como um fallback
+        
     try:
         prompt = f"""
         A pergunta a seguir precisa de informações da internet em tempo real (eventos atuais, política, etc)?
@@ -154,7 +148,6 @@ def gerar_titulo_conversa(historico: list):
     except Exception:
         return "Chat"
 
-# <--- MODIFICADO: A função agora aceita 'context_id' --->
 async def stream_chat_generator(message: str, history_json: str, token: str, context_id: str = None):
     """
     Função geradora final que busca preferências, contexto de arquivos e gera a resposta da IA.
@@ -162,17 +155,17 @@ async def stream_chat_generator(message: str, history_json: str, token: str, con
     print("\n--- INICIANDO NOVO PEDIDO DE CHAT ---") # <<< DEBUG >>>
     try:
         user_email = get_user_email_from_token(token)
-        print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}") # <<< DEBUG >>>
+        print(f"[DEBUG] Token decodificado com sucesso. E-mail do utilizador: {user_email}") 
 
-        # === NOVO: DETECÇÃO DE IDIOMA NO INÍCIO ===
+        # === DETECÇÃO DE IDIOMA NO INÍCIO ===
         idioma_usuario = detectar_idioma_com_ia(message)
         print(f"[DEBUG] Idioma do utilizador detetado: {idioma_usuario}")
         # ==========================================
         
         # === LÓGICA DE PRIORIZAÇÃO DE CONTEXTO ===
-        # PASSO 1: Sempre verifica e prioriza o contexto do arquivo, se houver.
+        
         if context_id and context_id in file_contexts:
-            print(f"[DEBUG] Contexto de arquivo encontrado para o ID: {context_id}. A usar o arquivo.") # <<< DEBUG >>>
+            print(f"[DEBUG] Contexto de arquivo encontrado para o ID: {context_id}. A usar o arquivo.") 
             contexto_arquivo = file_contexts[context_id]
             
             LIMITE_CARACTERES = 20000 * 4
@@ -199,31 +192,24 @@ async def stream_chat_generator(message: str, history_json: str, token: str, con
             RESULTADOS DA PESQUISA:
             {contexto_da_web}
             """
-            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
-            
-            # --- NOVO: LÓGICA PARA AJUSTAR A LINGUA DA BUSCA ---
-            # Para buscas na web em outras línguas, você precisará modificar a função 'buscar_na_internet'
-            # para aceitar 'hl' (host language) e 'gl' (geography language) como parâmetros.
-            # No momento, a sua função 'buscar_na_internet' tem esses valores fixos como 'pt-br'
-            # e 'br', o que limitaria a busca a resultados em português do Brasil.
-            # Isso pode ser uma melhoria futura.
-            
-        # PASSO 3: Se não houver arquivo nem necessidade de busca na web, usa as preferências do usuário.
+            mensagens_para_api = [{"role": "system", "content": prompt_sistema}]              
+             
+             
+                   
         else:
-            print("[DEBUG] Decisão: Não é necessária busca na web. A processar com personalização.") # <<< DEBUG >>>
+            print("[DEBUG] Decisão: Não é necessária busca na web. A processar com personalização.") 
             preferencias = carregar_preferencias_do_usuario(user_email)
             prompt_sistema = f"Você é Jarvis, um assistente prestável e amigável. Responda na língua do utilizador (código: {idioma_usuario})."
             if preferencias:
-                print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.") # <<< DEBUG >>>
+                print("[DEBUG] Preferências encontradas. A injetar contexto no prompt do sistema.") 
                 nome_usuario = preferencias.get('nome', 'utilizador')
                 prompt_sistema += f"\n\nContexto sobre o utilizador ({nome_usuario.capitalize()}): {json.dumps(preferencias, ensure_ascii=False)}. Use essas informações para personalizar as suas respostas sempre que for relevante."
             else:
-                print("[DEBUG] Nenhuma preferência encontrada para este utilizador. A usar prompt padrão.") # <<< DEBUG >>>
+                print("[DEBUG] Nenhuma preferência encontrada para este utilizador. A usar prompt padrão.") 
             
             mensagens_para_api = [{"role": "system", "content": prompt_sistema}]
 
-        # === FIM DA LÓGICA DE PRIORIZAÇÃO ===
-
+        
         history = json.loads(history_json)
         mensagens_para_api.extend(history)
         mensagens_para_api.append({"role": "user", "content": message})
