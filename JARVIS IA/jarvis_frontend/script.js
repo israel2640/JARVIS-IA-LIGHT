@@ -339,7 +339,7 @@ console.log(`Modo: ${isLocal ? 'Local' : 'Produção'}. Conectando ao backend em
     logoutBtn.addEventListener('click', () => {
         if (confirm("Tem certeza que deseja sair?")) {
             localStorage.removeItem('jwtToken');
-            localStorage.removeItem('jarvisAppState');
+            //localStorage.removeItem('jarvisAppState');
             window.location.href = 'login.html';
         }
     });
