@@ -241,3 +241,69 @@ input:checked + .slider:before { transform: translateX(20px); }
     font-size: 1rem;
     line-height: 1;
 }
+
+/* Adicionar ao final de style.css */
+
+/* Garante que o container do código (<pre>) possa ancorar o botão */
+.jarvis-message pre {
+    position: relative;
+}
+
+/* Estilos para o botão de copiar */
+.copy-code-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: white;
+    background-color: #555869; /* Cor de fundo do botão */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    opacity: 0; /* O botão ficará invisível por padrão */
+    transition: opacity 0.3s ease;
+}
+
+/* O botão aparece quando o usuário passa o mouse sobre o bloco de código */
+.jarvis-message pre:hover .copy-code-btn {
+    opacity: 1;
+}
+
+.copy-code-btn:hover {
+    background-color: #6c7086; /* Cor ao passar o mouse */
+}
+
+/* Adicionar ao final de style.css */
+
+/* Torna o container da mensagem do usuário relativo para ancorar o botão */
+.user-message {
+    position: relative;
+}
+
+/* Estilos para o botão de editar mensagem */
+.edit-message-btn {
+    position: absolute;
+    left: -35px; /* Posiciona o botão à esquerda da caixa de mensagem */
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    opacity: 0; /* Invisível por padrão */
+    transition: opacity 0.2s;
+    font-size: 1rem; /* Tamanho do ícone */
+}
+
+/* Mostra o botão quando o mouse passa sobre a mensagem */
+.user-message:hover .edit-message-btn {
+    opacity: 1;
+}
+
+.edit-message-btn:hover {
+    background-color: var(--input-bg);
+}
