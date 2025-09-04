@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // === LÓGICA DE AUTENTICAÇÃO E CONTROLE DE ACESSO
   // ==========================================================
   const token = localStorage.getItem("jwtToken");
+  let currentUserEmail = null;
   if (!token) {
     window.location.href = "login.html";
     return;
@@ -68,6 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const userData = decodeJwtPayload(token);
   const userRole = userData ? userData.role : null;
+  currentUserEmail = userData ? userData.sub : null;
 
   if (userRole === "admin") {
     const adminPanelLink = document.createElement("a");
@@ -143,30 +145,37 @@ document.addEventListener("DOMContentLoaded", () => {
   // === GERENCIAMENTO DE ESTADO (STATE)
   // ==========================================================
   function saveState() {
-    localStorage.setItem("jarvisAppState", JSON.stringify(state));
+      if (!currentUserEmail) return; // Não salva nada se não houver um usuário logado
+      const userStateKey = `jarvisAppState_${currentUserEmail}`;
+      localStorage.setItem(userStateKey, JSON.stringify(state));
   }
   function loadState() {
-    const savedState = localStorage.getItem("jarvisAppState");
-    if (savedState) {
-      state = JSON.parse(savedState);
-    } else {
-      createNewChat();
-    }
+      if (!currentUserEmail) { // Se não houver usuário, inicia um chat vazio
+          createNewChat();
+          return;
+      }
+      const userStateKey = `jarvisAppState_${currentUserEmail}`;
+      const savedState = localStorage.getItem(userStateKey);
+      if (savedState) {
+          state = JSON.parse(savedState);
+      } else {
+          // Se este usuário nunca salvou um estado, cria um novo chat para ele
+          createNewChat();
+      }
   }
+
   function renderSidebar() {
-    chatHistoryList.innerHTML = "";
-    Object.values(state.chats)
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .forEach((chat) => {
-        const li = document.createElement("li");
-        li.className = `chat-history-item ${
-          chat.id === state.currentChatId ? "active" : ""
-        }`;
-        li.dataset.chatId = chat.id;
-        li.innerHTML = ` <span class="history-item-title">${chat.title}</span> <div class="history-item-buttons"> <button class="icon-button edit-btn"><i class="ph ph-pencil-simple"></i></button> <button class="icon-button delete-btn"><i class="ph ph-trash"></i></button> </div>`;
-        chatHistoryList.appendChild(li);
-      });
-    addSidebarEventListeners();
+      chatHistoryList.innerHTML = '';
+      Object.values(state.chats)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .forEach(chat => {
+          const li = document.createElement("li");
+          li.className = `chat-history-item ${chat.id === state.currentChatId ? "active" : ""}`;
+          li.dataset.chatId = chat.id;
+          li.innerHTML = ` <span class="history-item-title">${chat.title}</span> <div class="history-item-buttons"> <button class="icon-button edit-btn"><i class="ph ph-pencil-simple"></i></button> <button class="icon-button delete-btn"><i class="ph ph-trash"></i></button> </div>`;
+          chatHistoryList.appendChild(li);
+        });
+      addSidebarEventListeners();
   }
   // Substitua a sua função renderMessages por esta:
   function renderMessages() {
@@ -643,13 +652,32 @@ document.addEventListener("DOMContentLoaded", () => {
     micBtn.style.display = "none"; // Esconde o botão se a API não for suportada
   }
 
-  // --- LÓGICA DE LOGOUT ---
+  
+  // --- LÓGICA DE LOGOUT COM ESCOLHA DO USUÁRIO) ---
   logoutBtn.addEventListener("click", () => {
-    if (confirm("Tem certeza que deseja sair?")) {
-      localStorage.removeItem("jwtToken");
-      //localStorage.removeItem('jarvisAppState');
-      window.location.href = "login.html";
-    }
+      // Primeira confirmação: o usuário realmente quer sair?
+      if (confirm("Tem certeza que deseja sair?")) {
+          
+          // CORREÇÃO: Adicionando a chamada 'confirm()' que estava faltando
+          const deleteHistory = confirm("Deseja APAGAR o histórico de conversas deste navegador?\n\nClique em 'OK' para apagar ou 'Cancelar' para manter.");
+
+          if (deleteHistory) {
+              // Se o usuário clicou em 'OK' (true), então APAGAMOS o histórico.
+              const userStateKey = `jarvisAppState_${currentUserEmail}`;
+              localStorage.removeItem(userStateKey);
+              console.log("Histórico de chat local foi removido.");
+          }
+          // Se o usuário clicar em 'Cancelar' (false), nada acontece com o histórico.
+
+          // Remove o token de autenticação (sempre)
+          localStorage.removeItem("jwtToken");
+
+          // Remove a chave genérica antiga, para limpeza
+          localStorage.removeItem('jarvisAppState');
+
+          // Redireciona para a página de login
+          window.location.href = "login.html";
+      }
   });
 
   function render() {
