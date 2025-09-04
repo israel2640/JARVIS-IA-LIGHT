@@ -265,7 +265,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.text) {
               fullReply += data.text;
               jarvisMessageElement.innerHTML = marked.parse(fullReply);
-              addCopyButtonsToCodeBlocks(jarvisMessageElement); // Garante o botão de copiar na nova resposta
+              addCopyButtonsToCodeBlocks(jarvisMessageElement); 
+              openLinksInNewTab(jarvisMessageElement);
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
           }
@@ -326,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (role === "assistant" && typeof marked !== "undefined") {
       messageElement.innerHTML = marked.parse(text);
       addCopyButtonsToCodeBlocks(messageElement);
+      openLinksInNewTab(messageElement);
     } else {
       messageElement.textContent = text;
     }
@@ -342,6 +344,15 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return messageElement;
+  }
+
+  function openLinksInNewTab(element) {
+      const links = element.querySelectorAll('a');
+      links.forEach(link => {
+          link.target = '_blank';
+          // Adiciona 'rel' por segurança e boas práticas ao usar target="_blank"
+          link.rel = 'noopener noreferrer';
+      });
   }
 
   function createNewChat() {
@@ -488,7 +499,7 @@ document.addEventListener("DOMContentLoaded", () => {
               
               // --- ALTERAÇÃO 2: Adicionar o botão de copiar na resposta da IA ---
               addCopyButtonsToCodeBlocks(jarvisMessageElement);
-              
+              openLinksInNewTab(jarvisMessageElement);
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
           } else if (line.startsWith("event: end")) {
