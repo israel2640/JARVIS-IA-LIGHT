@@ -106,15 +106,35 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user_email(token: str = Depends(oauth2_scheme)):
+async def get_current_active_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Não foi possível validar as credenciais",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise HTTPException(status_code=401, detail="Could not validate credentials")
-        return email
+            raise credentials_exception
     except JWTError:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+        raise credentials_exception
+
+    # Agora, buscamos o usuário no banco de dados a cada requisição
+    response = supabase.table('usuarios').select("email, role, data_expiracao").eq('email', email).execute()
+    
+    if not response.data:
+        raise credentials_exception
+        
+    user = response.data[0]
+
+    # E verificamos a expiração em tempo real
+    if user.get("data_expiracao"):
+        data_expiracao = datetime.fromisoformat(user["data_expiracao"])
+        if datetime.now(timezone.utc) >= data_expiracao:
+            raise HTTPException(status_code=403, detail="Sua assinatura expirou.")
+            
+    return user # Retornamos o dicionário completo do usuário
 
 def get_current_admin_user(token: str = Depends(oauth2_scheme)):
     try:
@@ -132,14 +152,25 @@ def get_current_admin_user(token: str = Depends(oauth2_scheme)):
 async def health_check():
     return {"status": "ok"}
 
+
 @app.post("/api/auth/login", response_model=Token)
 async def login_for_access_token(form_data: UserLogin):
-    response = supabase.table('usuarios').select("email, senha_hash, role").eq('email', form_data.email).execute()
+    response = supabase.table('usuarios').select("email, senha_hash, role, data_expiracao").eq('email', form_data.email).execute()
     if not response.data:
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+    
     user = response.data[0]
+
+    # --- VERIFICAÇÃO DE EXPIRAÇÃO ---
+    if user.get("data_expiracao"):
+        data_expiracao = datetime.fromisoformat(user["data_expiracao"])
+        if datetime.now(timezone.utc) >= data_expiracao:
+            raise HTTPException(status_code=403, detail="Sua assinatura expirou. Por favor, renove para continuar.")
+    
+
     if not verify_password(form_data.password, user["senha_hash"]):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+    
     access_token = create_access_token(data={"sub": user["email"], "role": user["role"]})
     return {"accessToken": access_token, "token_type": "bearer"}
 
@@ -203,12 +234,14 @@ async def delete_user(email: str, admin_user: dict = Depends(get_current_admin_u
 # === ENDPOINTS DE PREFERÊNCIAS
 # ==========================================================
 @app.get("/api/preferences")
-async def get_user_preferences(user_email: str = Depends(get_current_user_email)):
+async def get_user_preferences(current_user: dict = Depends(get_current_active_user)):
+    user_email = current_user['email']
     response = supabase.table('preferencias').select('id, topico, valor').eq('user_email', user_email).execute()
     return response.data
 
 @app.post("/api/preferences")
-async def create_user_preference(preferencia: PreferenciaCreate, user_email: str = Depends(get_current_user_email)):
+async def create_user_preference(preferencia: PreferenciaCreate, current_user: dict = Depends(get_current_active_user)):
+    user_email = current_user['email']
     response = supabase.table('preferencias').insert({
         "user_email": user_email, "topico": preferencia.topico.strip().lower(), "valor": preferencia.valor.strip()
     }).execute()
@@ -217,14 +250,16 @@ async def create_user_preference(preferencia: PreferenciaCreate, user_email: str
     return response.data[0]
 
 @app.put("/api/preferences/{pref_id}")
-async def update_user_preference(pref_id: int, preferencia: PreferenciaUpdate, user_email: str = Depends(get_current_user_email)):
+async def update_user_preference(pref_id: int, preferencia: PreferenciaUpdate, current_user: dict = Depends(get_current_active_user)):
+    user_email = current_user['email']
     response = supabase.table('preferencias').update({"valor": preferencia.valor}).eq('id', pref_id).eq('user_email', user_email).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
     return response.data[0]
 
 @app.delete("/api/preferences/{pref_id}")
-async def delete_user_preference(pref_id: int, user_email: str = Depends(get_current_user_email)):
+async def delete_user_preference(pref_id: int, current_user: dict = Depends(get_current_active_user)):
+    user_email = current_user['email']
     response = supabase.table('preferencias').delete().eq('id', pref_id).eq('user_email', user_email).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Preferência não encontrada ou não pertence ao usuário.")
@@ -234,9 +269,11 @@ async def delete_user_preference(pref_id: int, user_email: str = Depends(get_cur
 # === ENDPOINTS PRINCIPAIS DA APLICAÇÃO (IA)
 # ==========================================================
 
-# <--- Novo endpoint para upload de arquivos --->
 @app.post("/chat/upload-files")
-async def handle_file_upload(files: List[UploadFile] = File(...)):
+async def handle_file_upload(
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_active_user)
+):
     conteudo_agregado = []
     nomes_arquivos = []
 
